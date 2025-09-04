@@ -13,3 +13,12 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Chat {
+  id        Int      @id @default(autoincrement())
+  username  String
+  text      String
+  createdAt DateTime @default(now())
+
+  @@map("chats")
+}
