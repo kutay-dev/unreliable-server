@@ -5,6 +5,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
+import { SendMessageDto } from './dto';
 
 @WebSocketGateway({ cors: true })
 export class ChatGateway {
@@ -12,13 +13,13 @@ export class ChatGateway {
   @WebSocketServer() server: Server;
 
   @SubscribeMessage('sendMessage')
-  async sendMessage(client: Socket, data: { username: string; text: string }) {
+  async sendMessage(client: Socket, dto: SendMessageDto) {
     this.server.emit('sendMessage', {
-      username: data.username,
-      text: data.text,
+      username: dto.username,
+      text: dto.text,
       createdAt: new Date(),
     });
 
-    await this.chatService.sendMessage(data.username, data.text);
+    await this.chatService.sendMessage(dto);
   }
 }

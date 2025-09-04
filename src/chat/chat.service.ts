@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SendMessageDto } from './dto';
 
 @Injectable()
 export class ChatService {
@@ -9,11 +10,11 @@ export class ChatService {
     return this.prisma.chat.findMany({});
   }
 
-  sendMessage(username: string, text: string) {
+  sendMessage(dto: SendMessageDto) {
     return this.prisma.chat.create({
       data: {
-        username,
-        text,
+        username: dto.username,
+        text: dto.text,
       },
     });
   }
