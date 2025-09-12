@@ -1,4 +1,4 @@
-import { PrismaService } from '@/prisma/prisma.service';
+import { PrismaService } from '@/modules/prisma/prisma.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserCredentialsDto } from './dto';
 

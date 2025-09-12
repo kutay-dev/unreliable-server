@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from './prisma/prisma.module';
-import { ChatModule } from './chat/chat.module';
-import { ChatGateway } from './chat/chat.gateway';
-import { ChatService } from './chat/chat.service';
-import { UserService } from './user/user.service';
-import { UserController } from './user/user.controller';
-import { UserModule } from './user/user.module';
+import { PrismaModule } from './modules/prisma/prisma.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { ChatGateway } from './modules/chat/chat.gateway';
+import { ChatService } from './modules/chat/chat.service';
+import { UserService } from './modules/user/user.service';
+import { UserController } from './modules/user/user.controller';
+import { UserModule } from './modules/user/user.module';
 
 @Module({
   imports: [
