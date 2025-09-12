@@ -1,10 +1,32 @@
 import { PrismaService } from '@/core/prisma/prisma.service';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UserCredentialsDto } from './dto';
 
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService) {}
+
+  async getUser(username: string) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        username,
+      },
+      select: {
+        createdAt: true,
+        username: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
 
   async login(dto: UserCredentialsDto) {
     const user = await this.prisma.user.findUnique({
