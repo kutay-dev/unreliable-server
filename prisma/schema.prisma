@@ -13,10 +13,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  GOD
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   username  String   @unique
   password  String
+  role      Role     @default(USER)
   createdAt DateTime @default(now())
 
   @@map("users")
