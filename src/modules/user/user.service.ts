@@ -1,5 +1,7 @@
 import { PrismaService } from '@/core/prisma/prisma.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { GenerateRandomUserDto } from './dto/generate.dto';
+import { CommonUtils } from '@/common/utils/common.utils';
 
 @Injectable()
 export class UserService {
@@ -25,5 +27,14 @@ export class UserService {
 
   async getAllUsers() {
     return await this.prisma.user.findMany();
+  }
+
+  async generateRandomUser(random: GenerateRandomUserDto) {
+    return await this.prisma.user.createMany({
+      data: Array.from({ length: random.generations }, () => ({
+        username: Math.random().toString(36).substring(2, 12),
+        password: `$argon2id$v=19$m=65536,t=3,p=4$${CommonUtils.generateRandomComplexString(66)}`,
+      })),
+    });
   }
 }

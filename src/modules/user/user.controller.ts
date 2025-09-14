@@ -1,6 +1,8 @@
 import {
+  Body,
   Controller,
   Get,
+  Post,
   Query,
   Req,
   UnauthorizedException,
@@ -11,6 +13,7 @@ import { JwtGuard } from '../auth/jwt.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { Role } from '@/common/enums';
+import { GenerateRandomUserDto } from './dto/generate.dto';
 
 @UseGuards(JwtGuard)
 @Controller('user')
@@ -33,5 +36,12 @@ export class UserController {
   @Get('all')
   getAllUsers() {
     return this.userService.getAllUsers();
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.GOD)
+  @Post('generate')
+  generateRandomUser(@Body() generations: GenerateRandomUserDto) {
+    return this.userService.generateRandomUser(generations);
   }
 }
