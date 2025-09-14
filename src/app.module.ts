@@ -7,13 +7,15 @@ import { ChatService } from '@/modules/chat/chat.service';
 import { UserService } from '@/modules/user/user.service';
 import { UserController } from '@/modules/user/user.controller';
 import { UserModule } from '@/modules/user/user.module';
+import { AuthModule } from '@/modules/auth/auth.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
-    ChatModule,
+    AuthModule,
     UserModule,
+    ChatModule,
   ],
   providers: [ChatGateway, ChatService, UserService],
   controllers: [UserController],
