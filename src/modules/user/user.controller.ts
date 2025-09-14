@@ -14,8 +14,9 @@ import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { Role } from '@/common/enums';
 import { GenerateRandomUserDto } from './dto/generate.dto';
+import { DeleteUsersBulkDto } from './dto/delete-bulk.dto';
 
-@UseGuards(JwtGuard)
+@UseGuards(JwtGuard, RolesGuard)
 @Controller('user')
 export class UserController {
   constructor(private userService: UserService) {}
@@ -31,17 +32,21 @@ export class UserController {
     return this.userService.getUser(req.user.username);
   }
 
-  @UseGuards(RolesGuard)
   @Roles(Role.GOD)
   @Get('all')
   getAllUsers() {
     return this.userService.getAllUsers();
   }
 
-  @UseGuards(RolesGuard)
   @Roles(Role.GOD)
   @Post('generate')
   generateRandomUser(@Body() generations: GenerateRandomUserDto) {
     return this.userService.generateRandomUser(generations);
+  }
+
+  @Roles(Role.GOD)
+  @Post('delete-bulk')
+  deleteUsersBulk(@Body() deleteUsersBulk: DeleteUsersBulkDto) {
+    return this.userService.deleteUsersBulk(deleteUsersBulk);
   }
 }

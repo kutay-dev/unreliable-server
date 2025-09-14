@@ -2,6 +2,8 @@ import { PrismaService } from '@/core/prisma/prisma.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { GenerateRandomUserDto } from './dto/generate.dto';
 import { CommonUtils } from '@/common/utils/common.utils';
+import { DB_CHUNK_SIZE } from '@/common/constants/common';
+import { DeleteUsersBulkDto } from './dto/delete-bulk.dto';
 
 @Injectable()
 export class UserService {
@@ -36,5 +38,24 @@ export class UserService {
         password: `$argon2id$v=19$m=65536,t=3,p=4$${CommonUtils.generateRandomComplexString(66)}`,
       })),
     });
+  }
+
+  async deleteUsersBulk(deleteUsersBulk: DeleteUsersBulkDto) {
+    const users = await this.prisma.user.findMany({
+      select: { id: true },
+      where: { username: { not: 'god' } },
+      orderBy: { createdAt: deleteUsersBulk.order },
+      take: deleteUsersBulk.deletions,
+    });
+
+    const chunkSize = DB_CHUNK_SIZE;
+    for (let i = 0; i < users.length; i += chunkSize) {
+      const chunk = users.slice(i, i + chunkSize).map((user) => user.id);
+      await this.prisma.user.deleteMany({
+        where: { id: { in: chunk } },
+      });
+    }
+
+    return true;
   }
 }
