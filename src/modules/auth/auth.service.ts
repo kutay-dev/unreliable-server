@@ -5,7 +5,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '@/core/prisma/prisma.service';
-import { PrismaClientKnownRequestError } from 'generated/prisma/runtime/library';
 import * as argon from 'argon2';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -52,10 +51,8 @@ export class AuthService {
       });
       return this.signToken(user.id, user.username);
     } catch (error) {
-      if (error instanceof PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new UnauthorizedException('Credentials taken');
-        }
+      if (error.code === 'P2002') {
+        throw new BadRequestException('Credentials taken');
       }
       throw error;
     }
