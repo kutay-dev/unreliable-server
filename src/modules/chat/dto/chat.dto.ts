@@ -6,6 +6,5 @@ export class SendMessageDto {
   username: string;
 
   @IsString()
-  @IsNotEmpty()
   text: string;
 }

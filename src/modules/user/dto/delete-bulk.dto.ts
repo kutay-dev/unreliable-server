@@ -1,12 +1,11 @@
-import { IsInt, IsNotEmpty, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class DeleteUsersBulkDto {
-  @IsNotEmpty()
   @IsInt()
   @Min(1)
   deletions: number;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   order: 'asc' | 'desc';
 }

@@ -1,9 +1,8 @@
 import { PrismaService } from '@/core/prisma/prisma.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { GenerateRandomUserDto } from './dto/generate.dto';
+import { GenerateRandomUserDto, DeleteUsersBulkDto } from './dto';
 import { CommonUtils } from '@/common/utils/common.utils';
 import { DB_CHUNK_SIZE } from '@/common/constants/common';
-import { DeleteUsersBulkDto } from './dto/delete-bulk.dto';
 import { Role } from '@/common/enums';
 
 @Injectable()

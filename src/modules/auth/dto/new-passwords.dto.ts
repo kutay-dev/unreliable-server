@@ -1,11 +1,10 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsString, MinLength } from 'class-validator';
 
 export class NewPasswordsDto {
   @IsString()
-  @IsNotEmpty()
+  @MinLength(8)
   new: string;
 
   @IsString()
-  @IsNotEmpty()
   newAgain: string;
 }

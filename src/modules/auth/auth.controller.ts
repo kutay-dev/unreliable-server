@@ -1,10 +1,9 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { UserCredentialsDto } from './dto/user-credentials.dto';
+import { UserCredentialsDto, NewPasswordsDto } from './dto';
 import { JwtGuard } from './jwt.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import type { User } from '@prisma/client';
-import { NewPasswordsDto } from './dto/new-passwords.dto';
 
 @Controller('auth')
 export class AuthController {
