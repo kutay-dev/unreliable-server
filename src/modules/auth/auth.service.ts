@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -9,6 +10,8 @@ import * as argon from 'argon2';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserCredentialsDto } from './dto/user-credentials.dto';
+import { User } from '@prisma/client';
+import { NewPasswordsDto } from './dto/new-passwords.dto';
 
 @Injectable()
 export class AuthService {
@@ -56,6 +59,30 @@ export class AuthService {
       }
       throw error;
     }
+  }
+
+  async changePassword(passwords: NewPasswordsDto, user: User) {
+    if (passwords.new !== passwords.newAgain)
+      throw new BadRequestException("Passwords don't match");
+
+    const passwordMatches = await argon.verify(user.password, passwords.new);
+    if (passwordMatches)
+      throw new BadRequestException('New password must be different');
+
+    const hash = await argon.hash(passwords.new);
+
+    return await this.prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        password: hash,
+      },
+      select: {
+        id: true,
+        username: true,
+      },
+    });
   }
 
   async signToken(userId: number, username: string) {

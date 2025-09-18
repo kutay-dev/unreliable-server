@@ -4,6 +4,7 @@ import { GenerateRandomUserDto } from './dto/generate.dto';
 import { CommonUtils } from '@/common/utils/common.utils';
 import { DB_CHUNK_SIZE } from '@/common/constants/common';
 import { DeleteUsersBulkDto } from './dto/delete-bulk.dto';
+import { Role } from '@/common/enums';
 
 @Injectable()
 export class UserService {
@@ -43,7 +44,7 @@ export class UserService {
   async deleteUsersBulk(deleteUsersBulk: DeleteUsersBulkDto) {
     const users = await this.prisma.user.findMany({
       select: { id: true },
-      where: { username: { not: 'god' } },
+      where: { role: { not: Role.GOD } },
       orderBy: { createdAt: deleteUsersBulk.order },
       take: deleteUsersBulk.deletions,
     });
