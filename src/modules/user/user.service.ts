@@ -44,7 +44,7 @@ export class UserService {
     const users = await this.prisma.user.findMany({
       select: { id: true },
       where: { role: { not: Role.GOD } },
-      orderBy: { createdAt: deleteUsersBulk.order },
+      orderBy: { createdAt: deleteUsersBulk.order || 'asc' },
       take: deleteUsersBulk.deletions,
     });
 
