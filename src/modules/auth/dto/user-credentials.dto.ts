@@ -1,6 +1,9 @@
-import { IsString, MinLength } from 'class-validator';
+import { IsNumber, IsString, MinLength } from 'class-validator';
 
 export class UserCredentialsDto {
+  @IsNumber()
+  id: number;
+
   @IsString()
   @MinLength(1)
   username: string;
