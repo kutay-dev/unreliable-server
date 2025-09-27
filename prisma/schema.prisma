@@ -18,21 +18,54 @@ enum Role {
   GOD
 }
 
+enum ChatType {
+  PUBLIC
+  PRIVATE
+}
+
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
+  id        Int          @id @default(autoincrement())
+  username  String       @unique
   password  String
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
+  role      Role         @default(USER)
+  messages  Message[]
+  members   ChatMember[]
+  createdAt DateTime     @default(now())
 
   @@map("users")
 }
 
 model Chat {
+  id       Int          @id @default(autoincrement())
+  name     String       @unique
+  type     ChatType     @default(PRIVATE)
+  password String?
+  messages Message[]
+  members  ChatMember[]
+
+  @@map("chats")
+}
+
+model ChatMember {
+  id       Int      @id @default(autoincrement())
+  user     User     @relation(fields: [userId], references: [id])
+  userId   Int
+  chat     Chat     @relation(fields: [chatId], references: [id])
+  chatId   Int
+  joinedAt DateTime @default(now())
+
+  @@unique([userId, chatId])
+  @@map("chat_members")
+}
+
+model Message {
   id        Int      @id @default(autoincrement())
-  username  String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  chatId    Int
   text      String
   createdAt DateTime @default(now())
 
-  @@map("chats")
+  @@map("messages")
 }

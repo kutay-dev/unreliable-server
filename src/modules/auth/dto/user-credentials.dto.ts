@@ -1,7 +1,8 @@
-import { IsNumber, IsString, MinLength } from 'class-validator';
+import { IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class UserCredentialsDto {
   @IsNumber()
+  @IsOptional()
   id: number;
 
   @IsString()

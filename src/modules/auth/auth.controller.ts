@@ -12,7 +12,7 @@ export class AuthController {
   @UseGuards(JwtGuard)
   @Get('protected/check')
   getUser() {
-    return;
+    return true;
   }
 
   @Post('login')
