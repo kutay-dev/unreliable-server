@@ -1,4 +1,10 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  BadRequestException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from '@/core/prisma/prisma.service';
 import { ChatType } from '@prisma/client';
 import { ChatService } from '../chat.service';
@@ -16,25 +22,20 @@ export class ChatAuthGuard implements CanActivate {
     const chatId = Number(req?.params?.id);
     const password = req?.body.password;
 
-    const chatType = await this.prisma.chat.findUnique({
+    const chat = await this.prisma.chat.findUnique({
       where: { id: chatId },
-      select: { type: true },
+      select: { type: true, password: true },
     });
+    if (!chat) throw new BadRequestException("Chat doesn't exist");
 
-    if (chatType!.type === ChatType.PUBLIC) return true;
+    if (chat.type === ChatType.PUBLIC) return true;
 
     const isMember = await this.chatService.validateChatMember(userId, chatId);
     if (isMember) return true;
 
-    const chatPassword = await this.prisma.chat.findUnique({
-      where: {
-        id: chatId,
-      },
-      select: {
-        password: true,
-      },
-    });
+    const passwordMatches = chat.password === password;
 
-    return chatPassword?.password === password;
+    if (!passwordMatches) throw new UnauthorizedException();
+    return true;
   }
 }
