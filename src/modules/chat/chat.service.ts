@@ -32,24 +32,6 @@ export class ChatService {
     });
   }
 
-  async leaveChat({ userId, chatId }) {
-    return await this.prisma.chatMember.delete({
-      where: {
-        userId_chatId: {
-          userId,
-          chatId,
-        },
-      },
-    });
-  }
-
-  async listUserChats(userId: number) {
-    return await this.prisma.chatMember.findMany({
-      where: { userId },
-      include: { chat: true },
-    });
-  }
-
   async listChats(userId: number) {
     return await this.prisma.chat.findMany({
       where: {
