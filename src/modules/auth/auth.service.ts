@@ -7,7 +7,6 @@ import {
 import { PrismaService } from '@/core/prisma/prisma.service';
 import * as argon from 'argon2';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import { UserCredentialsDto, NewPasswordsDto } from './dto';
 import { User } from '@prisma/client';
 
@@ -15,8 +14,7 @@ import { User } from '@prisma/client';
 export class AuthService {
   constructor(
     private prisma: PrismaService,
-    private jwt: JwtService,
-    private config: ConfigService,
+    private jwtService: JwtService,
   ) {}
 
   async login(credentials: UserCredentialsDto) {
@@ -86,13 +84,8 @@ export class AuthService {
       sub: userId,
       username,
     };
-    const secret = this.config.get('JWT_SECRET') || 'super_secret';
-    const expiresIn = this.config.get('JWT_EXPIRES_IN') || '30d';
-    const access_token = await this.jwt.signAsync(payload, {
-      expiresIn,
-      secret,
-    });
 
+    const access_token = await this.jwtService.signAsync(payload);
     return { access_token };
   }
 }

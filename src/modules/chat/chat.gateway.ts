@@ -1,6 +1,7 @@
 import {
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -9,10 +10,24 @@ import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { ChatConnectionDto, SendMessageDto } from './dto';
 import { ParseJSONPipe } from '@/common/pipes/parse-json.pipe';
+import { JwtService } from '@nestjs/jwt';
 
 @WebSocketGateway({ cors: true, namespace: 'chat' })
-export class ChatGateway {
-  constructor(private chatService: ChatService) {}
+export class ChatGateway implements OnGatewayConnection {
+  constructor(
+    private chatService: ChatService,
+    private jwtService: JwtService,
+  ) {}
+
+  handleConnection(client: Socket) {
+    try {
+      const token: string = client.handshake.auth.token;
+      const payload = this.jwtService.verify(token);
+      client.data.user = payload;
+    } catch {
+      client.disconnect();
+    }
+  }
   @WebSocketServer() server: Server;
 
   private chatName = (chatId: number) => `chat://${chatId}`;
@@ -24,7 +39,9 @@ export class ChatGateway {
   ) {
     const chatName = this.chatName(joinChatDto.chatId);
     await client.join(chatName);
-    this.server.to(chatName).emit('chat:join', { userId: joinChatDto.userId });
+    this.server
+      .to(chatName)
+      .emit('chat:join', { userId: client.data.user.sub });
   }
 
   @SubscribeMessage('chat:leave')
@@ -38,14 +55,19 @@ export class ChatGateway {
 
   @SubscribeMessage('message:send')
   async sendMessage(
+    @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) sendMessageDto: SendMessageDto,
   ) {
-    await this.chatService.sendMessage(sendMessageDto);
-    this.server
+    client.broadcast
       .to(this.chatName(sendMessageDto.chatId))
       .emit('message:receive', {
-        authorId: sendMessageDto.authorId,
+        authorId: client.data.user.sub,
         text: sendMessageDto.text,
       });
+
+    await this.chatService.sendMessage({
+      authorId: client.data.user.sub,
+      ...sendMessageDto,
+    });
   }
 }
