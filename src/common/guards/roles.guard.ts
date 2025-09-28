@@ -20,7 +20,7 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const id = request.user.id;
-    if (!id) return false;
+    if (id.length === 0) return false;
 
     const user = await this.prisma.user.findUnique({
       where: {
