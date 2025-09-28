@@ -1,15 +1,27 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import type { User } from '@prisma/client';
 import { ChatAuthGuard } from './guards';
 import { JwtGuard } from '@/modules/auth/jwt.guard';
 import { CreateChatDto } from './dto';
+import { S3Service } from '@/common/aws/s3/s3.service';
 
 @UseGuards(JwtGuard)
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly s3Service: S3Service,
+  ) {}
 
   @Get('list')
   listChats(@CurrentUser() user: User) {
@@ -29,5 +41,19 @@ export class ChatController {
   @Post('create')
   createChat(@Body() createChatDto: CreateChatDto) {
     return this.chatService.createChat(createChatDto);
+  }
+
+  @Get('get-upload-url')
+  async getUploadUrl(
+    @Query('fileName') fileName: string,
+    @Query('fileType') fileType: string,
+  ) {
+    return { url: await this.s3Service.presignUploadUrl(fileName, fileType) };
+  }
+
+  @Get('get-download-url')
+  async getDownloadUrl(@Query('fileName') fileName: string) {
+    console.log(fileName);
+    return { url: await this.s3Service.presignDownloadUrl(fileName) };
   }
 }
