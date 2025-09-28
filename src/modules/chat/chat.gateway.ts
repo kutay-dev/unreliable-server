@@ -21,16 +21,17 @@ export class ChatGateway implements OnGatewayConnection {
 
   handleConnection(client: Socket) {
     try {
-      const token: string = client.handshake.auth.token;
+      const token: string = client.handshake.auth?.token;
       const payload = this.jwtService.verify(token);
       client.data.user = payload;
     } catch {
       client.disconnect();
     }
   }
+
   @WebSocketServer() server: Server;
 
-  private chatName = (chatId: number) => `chat://${chatId}`;
+  private chatName = (chatId: number) => `chat:${chatId}`;
 
   @SubscribeMessage('chat:join')
   async joinChat(
