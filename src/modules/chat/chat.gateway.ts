@@ -15,8 +15,8 @@ import { JwtService } from '@nestjs/jwt';
 @WebSocketGateway({ cors: true, namespace: 'chat' })
 export class ChatGateway implements OnGatewayConnection {
   constructor(
-    private chatService: ChatService,
-    private jwtService: JwtService,
+    private readonly chatService: ChatService,
+    private readonly jwtService: JwtService,
   ) {}
 
   handleConnection(client: Socket) {

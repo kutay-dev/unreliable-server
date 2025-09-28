@@ -4,7 +4,7 @@ import { CreateChatDto } from './dto';
 
 @Injectable()
 export class ChatService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async createChat(createChatDto: CreateChatDto) {
     return await this.prisma.chat.create({

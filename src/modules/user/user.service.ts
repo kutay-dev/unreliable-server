@@ -7,7 +7,7 @@ import { Role } from '@/common/enums';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async getUser(username: string) {
     const user = await this.prisma.user.findUnique({

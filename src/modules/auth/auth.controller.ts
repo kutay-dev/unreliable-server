@@ -7,7 +7,7 @@ import type { User } from '@prisma/client';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
   @UseGuards(JwtGuard)
   @Get('protected/check')

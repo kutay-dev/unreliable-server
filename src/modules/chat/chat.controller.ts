@@ -9,7 +9,7 @@ import { CreateChatDto } from './dto';
 @UseGuards(JwtGuard)
 @Controller('chat')
 export class ChatController {
-  constructor(private chatService: ChatService) {}
+  constructor(private readonly chatService: ChatService) {}
 
   @Get('list')
   listChats(@CurrentUser() user: User) {
