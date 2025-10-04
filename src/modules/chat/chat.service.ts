@@ -64,14 +64,16 @@ export class ChatService {
     const messages: Message[] = await this.prisma.message.findMany({
       where: { chatId },
     });
-    for (let i = 0; i < messages.length; i++) {
-      if (messages[i].imageUrl) {
-        messages[i].imageUrl = await this.s3Service.presignDownloadUrl(
-          messages[i].imageUrl!,
+
+    return await Promise.all(
+      messages.map(async (message) => {
+        if (!message.imageUrl) return message;
+        const presignedUrl = await this.s3Service.presignDownloadUrl(
+          message.imageUrl,
         );
-      }
-    }
-    return messages;
+        return { ...message, imageUrl: presignedUrl };
+      }),
+    );
   }
 
   async sendMessage(sendMessageDto: SendMessageDto) {
