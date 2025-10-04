@@ -48,12 +48,6 @@ export class ChatController {
     @Query('fileName') fileName: string,
     @Query('fileType') fileType: string,
   ) {
-    return { url: await this.s3Service.presignUploadUrl(fileName, fileType) };
-  }
-
-  @Get('get-download-url')
-  async getDownloadUrl(@Query('fileName') fileName: string) {
-    console.log(fileName);
-    return { url: await this.s3Service.presignDownloadUrl(fileName) };
+    return await this.s3Service.presignUploadUrl(fileName, fileType);
   }
 }

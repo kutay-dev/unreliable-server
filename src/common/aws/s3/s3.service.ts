@@ -6,6 +6,7 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import uuidv4 from '@/common/utils/uuid';
 
 @Injectable()
 export class S3Service {
@@ -28,14 +29,21 @@ export class S3Service {
   }
 
   async presignUploadUrl(fileName: string, fileType: string) {
+    const uniqueFileName = `${uuidv4()}_${fileName}`;
     const command = new PutObjectCommand({
       Bucket: this.s3BucketName,
-      Key: fileName,
+      Key: uniqueFileName,
       ContentType: fileType,
     });
-    return await getSignedUrl(this.s3Client, command, {
+
+    const uploadUrl = await getSignedUrl(this.s3Client, command, {
       expiresIn: 60 * 10,
     });
+
+    return {
+      uniqueFileName,
+      uploadUrl,
+    };
   }
 
   async presignDownloadUrl(fileName: string) {

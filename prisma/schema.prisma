@@ -64,7 +64,8 @@ model Message {
   authorId  Int
   chat      Chat     @relation(fields: [chatId], references: [id])
   chatId    Int
-  text      String
+  text      String?
+  imageUrl  String?
   createdAt DateTime @default(now())
 
   @@map("messages")

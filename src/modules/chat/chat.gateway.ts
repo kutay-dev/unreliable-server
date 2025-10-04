@@ -11,12 +11,14 @@ import { ChatService } from './chat.service';
 import { ChatConnectionDto, SendMessageDto } from './dto';
 import { ParseJSONPipe } from '@/common/pipes/parse-json.pipe';
 import { JwtService } from '@nestjs/jwt';
+import { S3Service } from '@/common/aws/s3/s3.service';
 
 @WebSocketGateway({ cors: true, namespace: 'chat' })
 export class ChatGateway implements OnGatewayConnection {
   constructor(
     private readonly chatService: ChatService,
     private readonly jwtService: JwtService,
+    private readonly s3Service: S3Service,
   ) {}
 
   handleConnection(client: Socket) {
@@ -59,16 +61,23 @@ export class ChatGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) sendMessageDto: SendMessageDto,
   ) {
+    const imageUrl: string | null = sendMessageDto.uniqueFileName
+      ? await this.s3Service.presignDownloadUrl(sendMessageDto.uniqueFileName)
+      : null;
+
     client.broadcast
       .to(this.chatName(sendMessageDto.chatId))
       .emit('message:receive', {
         authorId: client.data.user.sub,
         text: sendMessageDto.text,
+        imageUrl,
       });
 
     await this.chatService.sendMessage({
+      chatId: sendMessageDto.chatId,
       authorId: client.data.user.sub,
-      ...sendMessageDto,
+      text: sendMessageDto.text,
+      uniqueFileName: sendMessageDto.uniqueFileName,
     });
   }
 }

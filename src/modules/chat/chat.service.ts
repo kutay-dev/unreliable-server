@@ -1,10 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/core/prisma/prisma.service';
-import { CreateChatDto } from './dto';
+import { CreateChatDto, SendMessageDto } from './dto';
+import { S3Service } from '@/common/aws/s3/s3.service';
+import { Message } from '@prisma/client';
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly s3Service: S3Service,
+  ) {}
 
   async createChat(createChatDto: CreateChatDto) {
     return await this.prisma.chat.create({
@@ -56,17 +61,26 @@ export class ChatService {
   }
 
   async listMessages(chatId: number) {
-    return await this.prisma.message.findMany({
+    const messages: Message[] = await this.prisma.message.findMany({
       where: { chatId },
     });
+    for (let i = 0; i < messages.length; i++) {
+      if (messages[i].imageUrl) {
+        messages[i].imageUrl = await this.s3Service.presignDownloadUrl(
+          messages[i].imageUrl!,
+        );
+      }
+    }
+    return messages;
   }
 
-  async sendMessage({ authorId, chatId, text }) {
+  async sendMessage(sendMessageDto: SendMessageDto) {
     return await this.prisma.message.create({
       data: {
-        authorId,
-        chatId,
-        text,
+        authorId: sendMessageDto.authorId,
+        chatId: sendMessageDto.chatId,
+        text: sendMessageDto.text,
+        imageUrl: sendMessageDto.uniqueFileName,
       },
     });
   }
