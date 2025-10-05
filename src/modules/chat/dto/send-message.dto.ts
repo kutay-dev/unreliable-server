@@ -2,12 +2,12 @@ import { IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SendMessageDto {
-  @ApiPropertyOptional({ example: 'a3f4f2b1-7d3c-4b8e-9a21-2b1d8c5a9f10' })
+  @ApiPropertyOptional({ example: '5ae26726-cd95-4899-9de9-d2ee010110bf' })
   @IsOptional()
   @IsUUID()
   authorId: string;
 
-  @ApiProperty({ example: 'b6c2f0d4-5e8a-4c1b-9d7f-3a2b1c4d5e6f' })
+  @ApiProperty({ example: '686fd61d-6090-487a-97cb-b9255e88682b' })
   @IsUUID()
   chatId: string;
 

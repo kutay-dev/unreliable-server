@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/core/prisma/prisma.service';
-import { CreateChatDto, SendMessageDto } from './dto';
+import { CreateChatDto, GetMessagesDto, SendMessageDto } from './dto';
 import { S3Service } from '@/common/aws/s3/s3.service';
 import { Message } from '@prisma/client';
 
@@ -60,10 +60,16 @@ export class ChatService {
     });
   }
 
-  async listMessages(chatId: string) {
+  async getMessages(getMessagesDto: GetMessagesDto) {
     const messages: Message[] = await this.prisma.message.findMany({
-      where: { chatId },
+      where: { chatId: getMessagesDto.chatId },
+      orderBy: { id: 'desc' }, // newest first
+      take: getMessagesDto.limit,
+      cursor: getMessagesDto.cursor ? { id: getMessagesDto.cursor } : undefined,
+      skip: getMessagesDto.cursor ? 1 : 0, // skip the cursor itself
     });
+
+    messages.reverse(); // oldest → newest for frontend
 
     return await Promise.all(
       messages.map(async (message) => {

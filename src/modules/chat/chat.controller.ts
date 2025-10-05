@@ -12,7 +12,7 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import type { User } from '@prisma/client';
 import { ChatAuthGuard } from './guards';
 import { JwtGuard } from '@/modules/auth/jwt.guard';
-import { CreateChatDto } from './dto';
+import { CreateChatDto, GetMessagesDto } from './dto';
 import { S3Service } from '@/common/aws/s3/s3.service';
 
 @UseGuards(JwtGuard)
@@ -35,7 +35,12 @@ export class ChatController {
     if (!isMember) {
       await this.chatService.insertMember({ userId: user.id, chatId });
     }
-    return this.chatService.listMessages(chatId);
+    return isMember;
+  }
+
+  @Post('get-messages')
+  async getMessages(@Body() getMessagesDto: GetMessagesDto) {
+    return this.chatService.getMessages(getMessagesDto);
   }
 
   @Post('create')
