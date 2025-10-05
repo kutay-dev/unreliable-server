@@ -12,6 +12,7 @@ import { ChatConnectionDto, SendMessageDto } from './dto';
 import { ParseJSONPipe } from '@/common/pipes/parse-json.pipe';
 import { JwtService } from '@nestjs/jwt';
 import { S3Service } from '@/common/aws/s3/s3.service';
+import { LoggerService } from '@/core/logger/logger.service';
 
 @WebSocketGateway({ cors: true, namespace: 'chat' })
 export class ChatGateway implements OnGatewayConnection {
@@ -19,7 +20,10 @@ export class ChatGateway implements OnGatewayConnection {
     private readonly chatService: ChatService,
     private readonly jwtService: JwtService,
     private readonly s3Service: S3Service,
-  ) {}
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setModuleName(ChatGateway.name);
+  }
 
   handleConnection(client: Socket) {
     try {
@@ -27,6 +31,7 @@ export class ChatGateway implements OnGatewayConnection {
       const payload = this.jwtService.verify(token);
       client.data.user = payload;
     } catch {
+      this.logger.warn(`user ${client?.data?.user?.sub} couldn't connect`);
       client.disconnect();
     }
   }
@@ -45,6 +50,9 @@ export class ChatGateway implements OnGatewayConnection {
     this.server
       .to(chatName)
       .emit('chat:join', { userId: client.data.user.sub });
+    this.logger.log(
+      `author ${client?.data?.user?.sub} connected to ${chatName}`,
+    );
   }
 
   @SubscribeMessage('chat:leave')

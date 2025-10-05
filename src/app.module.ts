@@ -5,15 +5,17 @@ import { ChatModule } from '@/modules/chat/chat.module';
 import { UserModule } from '@/modules/user/user.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { AwsModule } from './common/aws/aws.module';
+import { LoggerModule } from './core/logger/logger.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    LoggerModule,
     PrismaModule,
+    AwsModule,
     AuthModule,
     UserModule,
     ChatModule,
-    AwsModule,
   ],
 })
 export class AppModule {}
