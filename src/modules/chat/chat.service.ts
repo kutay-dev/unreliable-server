@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/core/prisma/prisma.service';
-import { CreateChatDto, GetMessagesDto, SendMessageDto } from './dto';
+import {
+  CreateChatDto,
+  GenerateIncrementingMessageDto,
+  GetMessagesDto,
+  SendMessageDto,
+} from './dto';
 import { S3Service } from '@/common/aws/s3/s3.service';
 import { Message } from '@prisma/client';
 
@@ -63,13 +68,13 @@ export class ChatService {
   async getMessages(getMessagesDto: GetMessagesDto) {
     const messages: Message[] = await this.prisma.message.findMany({
       where: { chatId: getMessagesDto.chatId },
-      orderBy: { id: 'desc' }, // newest first
+      orderBy: { id: 'desc' },
       take: getMessagesDto.limit,
       cursor: getMessagesDto.cursor ? { id: getMessagesDto.cursor } : undefined,
-      skip: getMessagesDto.cursor ? 1 : 0, // skip the cursor itself
+      skip: getMessagesDto.cursor ? 1 : 0,
     });
 
-    messages.reverse(); // oldest → newest for frontend
+    messages.reverse();
 
     return await Promise.all(
       messages.map(async (message) => {
@@ -91,5 +96,21 @@ export class ChatService {
         imageUrl: sendMessageDto.uniqueFileName,
       },
     });
+  }
+
+  async generate(generateDto: GenerateIncrementingMessageDto) {
+    const generatedMessages: Message[] = [];
+    for (let i = 0; i < generateDto.generations; i++) {
+      const message = await this.prisma.message.create({
+        data: {
+          authorId: generateDto.authorId,
+          chatId: generateDto.chatId,
+          text: String(i + 1),
+        },
+      });
+      generatedMessages.push(message);
+    }
+
+    return generatedMessages;
   }
 }

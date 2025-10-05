@@ -12,8 +12,14 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import type { User } from '@prisma/client';
 import { ChatAuthGuard } from './guards';
 import { JwtGuard } from '@/modules/auth/jwt.guard';
-import { CreateChatDto, GetMessagesDto } from './dto';
+import {
+  CreateChatDto,
+  GenerateIncrementingMessageDto,
+  GetMessagesDto,
+} from './dto';
 import { S3Service } from '@/common/aws/s3/s3.service';
+import { Roles } from '@/common/decorators/roles.decorator';
+import { Role } from '@/common/enums';
 
 @UseGuards(JwtGuard)
 @Controller('chat')
@@ -54,5 +60,11 @@ export class ChatController {
     @Query('fileType') fileType: string,
   ) {
     return await this.s3Service.presignUploadUrl(fileName, fileType);
+  }
+
+  @Roles(Role.GOD)
+  @Post('generate')
+  generateMessages(@Body() generateDto: GenerateIncrementingMessageDto) {
+    return this.chatService.generate(generateDto);
   }
 }
