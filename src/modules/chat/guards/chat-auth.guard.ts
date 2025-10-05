@@ -18,8 +18,8 @@ export class ChatAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext) {
     const req = context.switchToHttp().getRequest();
-    const userId = Number(req?.user.id);
-    const chatId = Number(req?.params?.id);
+    const userId: string = req?.user.id;
+    const chatId: string = req?.params?.id;
     const password = req?.body.password;
 
     const chat = await this.prisma.chat.findUnique({

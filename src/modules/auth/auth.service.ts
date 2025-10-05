@@ -79,7 +79,7 @@ export class AuthService {
     });
   }
 
-  async signToken(userId: number, username: string) {
+  async signToken(userId: string, username: string) {
     const payload = {
       sub: userId,
       username,

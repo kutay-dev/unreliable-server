@@ -38,7 +38,7 @@ export class ChatGateway implements OnGatewayConnection {
 
   @WebSocketServer() server: Server;
 
-  private chatName = (chatId: number) => `chat:${chatId}`;
+  private chatName = (chatId: string) => `chat:${chatId}`;
 
   @SubscribeMessage('chat:join')
   async joinChat(

@@ -29,8 +29,8 @@ export class ChatController {
   }
 
   @UseGuards(ChatAuthGuard)
-  @Post(':id')
-  async joinChat(@Param('id') chatId: number, @CurrentUser() user: User) {
+  @Post('join/:id')
+  async joinChat(@Param('id') chatId: string, @CurrentUser() user: User) {
     const isMember = await this.chatService.validateChatMember(user.id, chatId);
     if (!isMember) {
       await this.chatService.insertMember({ userId: user.id, chatId });

@@ -21,7 +21,7 @@ export class ChatService {
     });
   }
 
-  async validateChatMember(userId: number, chatId: number) {
+  async validateChatMember(userId: string, chatId: string) {
     const member = await this.prisma.chatMember.findUnique({
       where: { userId_chatId: { userId, chatId } },
       select: { id: true },
@@ -29,7 +29,7 @@ export class ChatService {
     return !!member;
   }
 
-  async insertMember({ userId, chatId }) {
+  async insertMember({ userId, chatId }: { userId: string; chatId: string }) {
     return await this.prisma.chatMember.upsert({
       where: { userId_chatId: { userId, chatId } },
       create: { userId, chatId },
@@ -37,7 +37,7 @@ export class ChatService {
     });
   }
 
-  async listChats(userId: number) {
+  async listChats(userId: string) {
     return await this.prisma.chat.findMany({
       where: {
         OR: [
@@ -60,7 +60,7 @@ export class ChatService {
     });
   }
 
-  async listMessages(chatId: number) {
+  async listMessages(chatId: string) {
     const messages: Message[] = await this.prisma.message.findMany({
       where: { chatId },
     });
