@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { setupSwagger } from './common/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -10,6 +11,7 @@ async function bootstrap() {
       allowedHeaders: ['*'],
     },
   });
+
   app.enableCors();
   app.useGlobalPipes(
     new ValidationPipe({
@@ -17,6 +19,15 @@ async function bootstrap() {
       transform: true, // Converts plain json into your dto class instances and performs simple type coercion
     }),
   );
+
+  setupSwagger(
+    {
+      title: 'Unreliable',
+      version: '1.0.0',
+    },
+    app,
+  );
+
   await app.listen(process.env.PORT || 3333);
 }
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
