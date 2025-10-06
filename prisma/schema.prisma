@@ -53,14 +53,15 @@ model ChatMember {
 }
 
 model Message {
-  id        String   @id @default(ulid())
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  String   @db.Uuid
-  chat      Chat     @relation(fields: [chatId], references: [id])
-  chatId    String   @db.Uuid
+  id        String    @id @default(ulid())
+  author    User      @relation(fields: [authorId], references: [id])
+  authorId  String    @db.Uuid
+  chat      Chat      @relation(fields: [chatId], references: [id])
+  chatId    String    @db.Uuid
   text      String?
   imageUrl  String?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   @@map("messages")
 }

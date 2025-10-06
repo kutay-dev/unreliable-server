@@ -67,7 +67,7 @@ export class ChatService {
 
   async getMessages(getMessagesDto: GetMessagesDto) {
     const messages: Message[] = await this.prisma.message.findMany({
-      where: { chatId: getMessagesDto.chatId },
+      where: { chatId: getMessagesDto.chatId, deletedAt: null },
       orderBy: { id: 'desc' },
       take: getMessagesDto.limit,
       cursor: getMessagesDto.cursor ? { id: getMessagesDto.cursor } : undefined,
@@ -90,10 +90,28 @@ export class ChatService {
   async sendMessage(sendMessageDto: SendMessageDto) {
     return await this.prisma.message.create({
       data: {
-        authorId: sendMessageDto.authorId,
-        chatId: sendMessageDto.chatId,
+        authorId: sendMessageDto.authorId!,
+        chatId: sendMessageDto.chatId!,
         text: sendMessageDto.text,
         imageUrl: sendMessageDto.uniqueFileName,
+      },
+    });
+  }
+
+  async editMessage(id: string, text: string) {
+    await this.prisma.message.update({
+      where: { id },
+      data: {
+        text,
+      },
+    });
+  }
+
+  async deleteMessage(id: string) {
+    await this.prisma.message.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
       },
     });
   }

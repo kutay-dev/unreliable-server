@@ -13,6 +13,7 @@ import { ParseJSONPipe } from '@/common/pipes/parse-json.pipe';
 import { JwtService } from '@nestjs/jwt';
 import { S3Service } from '@/common/aws/s3/s3.service';
 import { LoggerService } from '@/core/logger/logger.service';
+import { SendMessageType } from '@/common/enums';
 
 @WebSocketGateway({ cors: true, namespace: 'chat' })
 export class ChatGateway implements OnGatewayConnection {
@@ -69,23 +70,52 @@ export class ChatGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) sendMessageDto: SendMessageDto,
   ) {
-    const imageUrl: string | null = sendMessageDto.uniqueFileName
-      ? await this.s3Service.presignDownloadUrl(sendMessageDto.uniqueFileName)
-      : null;
+    let payload: SendMessageDto & { imageUrl?: string | null } = {};
 
-    client.broadcast
-      .to(this.chatName(sendMessageDto.chatId))
-      .emit('message:receive', {
+    if (sendMessageDto.type === SendMessageType.POST) {
+      const imageUrl: string | null = sendMessageDto.uniqueFileName
+        ? await this.s3Service.presignDownloadUrl(sendMessageDto.uniqueFileName)
+        : null;
+
+      payload = {
         authorId: client.data.user.sub,
         text: sendMessageDto.text,
         imageUrl,
-      });
+      };
 
-    await this.chatService.sendMessage({
-      chatId: sendMessageDto.chatId,
-      authorId: client.data.user.sub,
-      text: sendMessageDto.text,
-      uniqueFileName: sendMessageDto.uniqueFileName,
-    });
+      await this.chatService.sendMessage({
+        chatId: sendMessageDto.chatId,
+        authorId: client.data.user.sub,
+        text: sendMessageDto.text,
+        uniqueFileName: sendMessageDto.uniqueFileName,
+      });
+    }
+
+    if (sendMessageDto.type === SendMessageType.PATCH) {
+      payload = {
+        messageId: sendMessageDto.messageId,
+        text: sendMessageDto.text,
+      };
+
+      await this.chatService.editMessage(
+        sendMessageDto.messageId!,
+        sendMessageDto.text!,
+      );
+    }
+
+    if (sendMessageDto.type === SendMessageType.DELETE) {
+      payload = {
+        messageId: sendMessageDto.messageId,
+      };
+
+      await this.chatService.deleteMessage(sendMessageDto.messageId!);
+    }
+
+    client.broadcast
+      .to(this.chatName(sendMessageDto.chatId!))
+      .emit('message:receive', {
+        type: sendMessageDto.type,
+        ...payload,
+      });
   }
 }
