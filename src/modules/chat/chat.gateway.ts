@@ -8,7 +8,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
-import { ChatConnectionDto, SendMessageDto } from './dto';
+import { ChatConnectionDto, SendAIMessageDto, SendMessageDto } from './dto';
 import { ParseJSONPipe } from '@/common/pipes/parse-json.pipe';
 import { JwtService } from '@nestjs/jwt';
 import { S3Service } from '@/common/aws/s3/s3.service';
@@ -117,5 +117,17 @@ export class ChatGateway implements OnGatewayConnection {
         type: sendMessageDto.type,
         ...payload,
       });
+  }
+
+  @SubscribeMessage('ai:send')
+  async sendAI(
+    @ConnectedSocket() client: Socket,
+    @MessageBody(ParseJSONPipe) sendAIMessageDto: SendAIMessageDto,
+  ) {
+    const aiReply = await this.chatService.sendAIMessage(
+      sendAIMessageDto.content,
+      String(client.data.user.sub),
+    );
+    client.emit('ai:receive', aiReply);
   }
 }

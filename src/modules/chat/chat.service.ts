@@ -7,7 +7,8 @@ import {
   SendMessageDto,
 } from './dto';
 import { S3Service } from '@/common/aws/s3/s3.service';
-import { Message } from '@prisma/client';
+import { AIMessageRole, Message } from '@prisma/client';
+import OpenAI from 'openai';
 
 @Injectable()
 export class ChatService {
@@ -15,6 +16,10 @@ export class ChatService {
     private readonly prisma: PrismaService,
     private readonly s3Service: S3Service,
   ) {}
+
+  private readonly client = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
 
   async createChat(createChatDto: CreateChatDto) {
     return await this.prisma.chat.create({
@@ -130,5 +135,51 @@ export class ChatService {
     }
 
     return generatedMessages;
+  }
+
+  async sendAIMessage(content: string, userId: string) {
+    await this.prisma.aIMessage.create({
+      data: {
+        role: AIMessageRole.USER,
+        userId,
+        content,
+      },
+    });
+
+    const chatHistory: { role: any; content: string }[] =
+      await this.prisma.aIMessage.findMany({
+        where: {
+          userId: userId,
+        },
+        orderBy: {
+          id: 'desc',
+        },
+        select: {
+          role: true,
+          content: true,
+        },
+        take: 14,
+      });
+
+    chatHistory.reverse().unshift({
+      role: 'system',
+      content: String(process.env.OPENAI_MODEL_SYSTEM_INSTRUCTIONS),
+    });
+
+    const response = await this.client.chat.completions.create({
+      model: String(process.env.OPENAI_MODEL),
+      messages: chatHistory.map((message) => ({
+        ...message,
+        role: message.role.toLowerCase(),
+      })),
+    });
+
+    return await this.prisma.aIMessage.create({
+      data: {
+        role: AIMessageRole.ASSISTANT,
+        userId: userId,
+        content: response.choices[0].message.content || 'null',
+      },
+    });
   }
 }
