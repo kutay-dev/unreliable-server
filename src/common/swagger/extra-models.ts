@@ -1,3 +1,3 @@
-import { SendMessageDto } from '@/modules/chat/dto';
+import { SendAIMessageDto, SendMessageDto } from '@/modules/chat/dto';
 
-export const EXTRA_MODELS = [SendMessageDto];
+export const EXTRA_MODELS = [SendMessageDto, SendAIMessageDto];

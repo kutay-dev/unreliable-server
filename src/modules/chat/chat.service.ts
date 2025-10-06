@@ -149,7 +149,7 @@ export class ChatService {
     const chatHistory: { role: any; content: string }[] =
       await this.prisma.aIMessage.findMany({
         where: {
-          userId: userId,
+          userId,
         },
         orderBy: {
           id: 'desc',
