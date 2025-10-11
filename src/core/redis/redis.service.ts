@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import Redis from 'ioredis';
 import { LoggerService } from '@/core/logger/logger.service';
-import { Message } from '@prisma/client';
 
 @Injectable()
 export class RedisService {
@@ -35,18 +34,5 @@ export class RedisService {
 
   getClient() {
     return this.redisClient;
-  }
-
-  async addMessage(roomId: string, message: Message) {
-    const key = `room:${roomId}:last50`;
-    await this.redisClient.rpush(key, JSON.stringify(message));
-    await this.redisClient.ltrim(key, -50, -1);
-    await this.redisClient.expire(key, 60 * 60 * 24);
-  }
-
-  async getLast50Messages(roomId: string): Promise<Message[]> {
-    const key = `room:${roomId}:last50`;
-    const messages = (await this.redisClient.lrange(key, -50, -1)) ?? [];
-    return messages.map((m) => JSON.parse(m) as Message);
   }
 }

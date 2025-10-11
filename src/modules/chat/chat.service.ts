@@ -9,15 +9,15 @@ import {
 import { S3Service } from '@/common/aws/s3/s3.service';
 import { AIMessageRole, Message } from '@prisma/client';
 import OpenAI from 'openai';
-import { RedisService } from '@/core/redis/redis.service';
 import { noNulls } from '@/common/utils/common.utils';
+import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';
 
 @Injectable()
 export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3Service: S3Service,
-    private readonly redisService: RedisService,
+    private readonly chatCacheService: ChatCacheService,
   ) {}
 
   private readonly client = new OpenAI({
@@ -77,7 +77,7 @@ export class ChatService {
     let messages: Message[];
 
     if (!getMessagesDto.cursor) {
-      const cached = await this.redisService.getLast50Messages(
+      const cached = await this.chatCacheService.getLast50Messages(
         getMessagesDto.chatId,
       );
 
@@ -138,7 +138,7 @@ export class ChatService {
       },
     });
 
-    await this.redisService.addMessage(
+    await this.chatCacheService.addMessage(
       sendMessageDto.chatId!,
       noNulls(message),
     );
