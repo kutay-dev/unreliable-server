@@ -147,21 +147,25 @@ export class ChatService {
   }
 
   async editMessage(id: string, text: string) {
-    await this.prisma.message.update({
+    const editedMessage = await this.prisma.message.update({
       where: { id },
       data: {
         text,
       },
     });
+
+    await this.chatCacheService.invalidateChatCache(editedMessage.chatId);
   }
 
   async deleteMessage(id: string) {
-    await this.prisma.message.update({
+    const deletedMessage = await this.prisma.message.update({
       where: { id },
       data: {
         deletedAt: new Date(),
       },
     });
+
+    await this.chatCacheService.invalidateChatCache(deletedMessage.chatId);
   }
 
   async generate(generateDto: GenerateIncrementingMessageDto) {

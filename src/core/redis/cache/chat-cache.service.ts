@@ -25,4 +25,8 @@ export class ChatCacheService {
     const messages = (await this.redisClient.lrange(key, -50, -1)) ?? [];
     return messages.map((m) => JSON.parse(m) as Message);
   }
+
+  async invalidateChatCache(chatId: string) {
+    await this.redisClient.del(`chat:${chatId}:messages:last50`);
+  }
 }
