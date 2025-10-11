@@ -6,12 +6,14 @@ import { UserModule } from '@/modules/user/user.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { AwsModule } from './common/aws/aws.module';
 import { LoggerModule } from './core/logger/logger.module';
+import { RedisModule } from './core/redis/redis.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule,
     PrismaModule,
+    RedisModule,
     AwsModule,
     AuthModule,
     UserModule,

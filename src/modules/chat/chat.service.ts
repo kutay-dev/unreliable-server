@@ -9,12 +9,14 @@ import {
 import { S3Service } from '@/common/aws/s3/s3.service';
 import { AIMessageRole, Message } from '@prisma/client';
 import OpenAI from 'openai';
+import { RedisService } from '@/core/redis/redis.service';
 
 @Injectable()
 export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3Service: S3Service,
+    private readonly redisService: RedisService,
   ) {}
 
   private readonly client = new OpenAI({
@@ -71,15 +73,47 @@ export class ChatService {
   }
 
   async getMessages(getMessagesDto: GetMessagesDto) {
-    const messages: Message[] = await this.prisma.message.findMany({
-      where: { chatId: getMessagesDto.chatId, deletedAt: null },
-      orderBy: { id: 'desc' },
-      take: getMessagesDto.limit,
-      cursor: getMessagesDto.cursor ? { id: getMessagesDto.cursor } : undefined,
-      skip: getMessagesDto.cursor ? 1 : 0,
-    });
+    let messages: Message[];
 
-    messages.reverse();
+    if (!getMessagesDto.cursor) {
+      const cached = await this.redisService.getLast50Messages(
+        getMessagesDto.chatId,
+      );
+
+      if (cached.length === 50) {
+        messages = cached;
+      } else {
+        const remaining = 50 - cached.length;
+        let remainingMessages: Message[];
+
+        if (cached.length > 0) {
+          remainingMessages = await this.prisma.message.findMany({
+            where: { chatId: getMessagesDto.chatId, deletedAt: null },
+            orderBy: { id: 'desc' },
+            skip: cached.length,
+            take: remaining,
+          });
+        } else {
+          remainingMessages = await this.prisma.message.findMany({
+            where: { chatId: getMessagesDto.chatId, deletedAt: null },
+            orderBy: { id: 'desc' },
+            take: remaining,
+          });
+        }
+        messages = [...remainingMessages.reverse(), ...cached];
+      }
+    } else {
+      messages = await this.prisma.message.findMany({
+        where: { chatId: getMessagesDto.chatId, deletedAt: null },
+        orderBy: { id: 'desc' },
+        take: getMessagesDto.limit,
+        cursor: getMessagesDto.cursor
+          ? { id: getMessagesDto.cursor }
+          : undefined,
+        skip: getMessagesDto.cursor ? 1 : 0,
+      });
+      messages.reverse();
+    }
 
     return await Promise.all(
       messages.map(async (message) => {
@@ -93,7 +127,7 @@ export class ChatService {
   }
 
   async sendMessage(sendMessageDto: SendMessageDto) {
-    return await this.prisma.message.create({
+    const message = await this.prisma.message.create({
       data: {
         authorId: sendMessageDto.authorId!,
         chatId: sendMessageDto.chatId!,
@@ -101,6 +135,10 @@ export class ChatService {
         imageUrl: sendMessageDto.uniqueFileName,
       },
     });
+
+    await this.redisService.addMessage(sendMessageDto.chatId!, message);
+
+    return message;
   }
 
   async editMessage(id: string, text: string) {
