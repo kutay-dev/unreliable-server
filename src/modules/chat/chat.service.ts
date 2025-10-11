@@ -10,6 +10,7 @@ import { S3Service } from '@/common/aws/s3/s3.service';
 import { AIMessageRole, Message } from '@prisma/client';
 import OpenAI from 'openai';
 import { RedisService } from '@/core/redis/redis.service';
+import { noNulls } from '@/common/utils/common.utils';
 
 @Injectable()
 export class ChatService {
@@ -90,7 +91,8 @@ export class ChatService {
           remainingMessages = await this.prisma.message.findMany({
             where: { chatId: getMessagesDto.chatId, deletedAt: null },
             orderBy: { id: 'desc' },
-            skip: cached.length,
+            cursor: { id: cached[0].id },
+            skip: 1,
             take: remaining,
           });
         } else {
@@ -136,7 +138,10 @@ export class ChatService {
       },
     });
 
-    await this.redisService.addMessage(sendMessageDto.chatId!, message);
+    await this.redisService.addMessage(
+      sendMessageDto.chatId!,
+      noNulls(message),
+    );
 
     return message;
   }
