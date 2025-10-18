@@ -1,18 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import Redis from 'ioredis';
 import { LoggerService } from '@/core/logger/logger.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RedisService {
   private redisClient: Redis;
 
-  constructor(private readonly logger: LoggerService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
+  ) {
     this.logger.setModuleName(RedisService.name);
     this.redisClient = new Redis({
-      host: process.env.REDIS_HOST,
-      port: +process.env.REDIS_PORT!,
-      password: process.env.REDIS_PASSWORD,
-      tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
+      host: this.configService.getOrThrow<string>('REDIS_HOST'),
+      port: this.configService.getOrThrow<number>('REDIS_PORT'),
+      password: this.configService.get<string>('REDIS_PASSWORD'),
+      tls:
+        this.configService.get<string>('REDIS_TLS') === 'true' ? {} : undefined,
     });
 
     this.redisClient.on('connect', () => {

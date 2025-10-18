@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { setupSwagger } from './common/swagger';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -11,6 +12,8 @@ async function bootstrap() {
       allowedHeaders: ['*'],
     },
   });
+
+  const configService = app.get(ConfigService);
 
   app.enableCors();
   app.useGlobalPipes(
@@ -28,7 +31,7 @@ async function bootstrap() {
     app,
   );
 
-  await app.listen(process.env.PORT || 3333);
+  await app.listen(configService.get('PORT') || 3333);
 }
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 bootstrap();

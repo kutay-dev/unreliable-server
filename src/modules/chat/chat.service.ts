@@ -11,18 +11,22 @@ import { AIMessageRole, Message } from '@prisma/client';
 import OpenAI from 'openai';
 import { noNulls } from '@/common/utils/common.utils';
 import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ChatService {
+  private readonly aiClient: OpenAI;
+
   constructor(
+    private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly s3Service: S3Service,
     private readonly chatCacheService: ChatCacheService,
-  ) {}
-
-  private readonly client = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
+  ) {
+    this.aiClient = new OpenAI({
+      apiKey: this.configService.getOrThrow<string>('OPENAI_API_KEY'),
+    });
+  }
 
   async createChat(createChatDto: CreateChatDto) {
     return await this.prisma.chat.create({
@@ -210,11 +214,13 @@ export class ChatService {
 
     chatHistory.reverse().unshift({
       role: 'system',
-      content: String(process.env.OPENAI_MODEL_SYSTEM_INSTRUCTIONS),
+      content: this.configService.getOrThrow<string>(
+        'OPENAI_MODEL_SYSTEM_INSTRUCTIONS',
+      ),
     });
 
-    const response = await this.client.chat.completions.create({
-      model: String(process.env.OPENAI_MODEL),
+    const response = await this.aiClient.chat.completions.create({
+      model: this.configService.getOrThrow<string>('OPENAI_MODEL'),
       messages: chatHistory.map((message) => ({
         ...message,
         role: message.role.toLowerCase(),
