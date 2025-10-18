@@ -11,7 +11,7 @@ import { ChatService } from './chat.service';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import type { User } from '@prisma/client';
 import { ChatAuthGuard } from './guards';
-import { JwtGuard } from '@/modules/auth/jwt.guard';
+import { JwtGuard } from '@/common/guards/jwt.guard';
 import {
   CreateChatDto,
   GenerateIncrementingMessageDto,

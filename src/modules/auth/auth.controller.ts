@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserCredentialsDto, NewPasswordsDto } from './dto';
-import { JwtGuard } from './jwt.guard';
+import { JwtGuard } from '@/common/guards/jwt.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import type { User } from '@prisma/client';
 
