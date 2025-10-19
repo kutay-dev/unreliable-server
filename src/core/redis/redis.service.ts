@@ -40,4 +40,28 @@ export class RedisService {
   getClient() {
     return this.redisClient;
   }
+
+  async set(key: string, value: any, ttlSeconds?: number) {
+    if (ttlSeconds)
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      return await this.redisClient.set(key, value, 'EX', ttlSeconds);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    return await this.redisClient.set(key, value);
+  }
+
+  async get(key: string) {
+    return await this.redisClient.get(key);
+  }
+
+  async del(key: string) {
+    return await this.redisClient.del(key);
+  }
+
+  async exists(key: string) {
+    return await this.redisClient.exists(key);
+  }
+
+  async expire(key: string, ttlSeconds: number) {
+    return await this.redisClient.expire(key, ttlSeconds);
+  }
 }

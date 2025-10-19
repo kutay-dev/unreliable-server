@@ -12,6 +12,7 @@ import OpenAI from 'openai';
 import { noNulls } from '@/common/utils/common.utils';
 import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';
 import { ConfigService } from '@nestjs/config';
+import { RedisService } from '@/core/redis/redis.service';
 
 @Injectable()
 export class ChatService {
@@ -21,6 +22,7 @@ export class ChatService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly s3Service: S3Service,
+    private readonly redisService: RedisService,
     private readonly chatCacheService: ChatCacheService,
   ) {
     this.aiClient = new OpenAI({
@@ -158,7 +160,7 @@ export class ChatService {
       },
     });
 
-    await this.chatCacheService.invalidateChatCache(editedMessage.chatId);
+    await this.redisService.del(`chat:${editedMessage.chatId}:messages:last50`);
   }
 
   async deleteMessage(id: string) {
@@ -169,7 +171,9 @@ export class ChatService {
       },
     });
 
-    await this.chatCacheService.invalidateChatCache(deletedMessage.chatId);
+    await this.redisService.del(
+      `chat:${deletedMessage.chatId}:messages:last50`,
+    );
   }
 
   async generate(generateDto: GenerateIncrementingMessageDto) {

@@ -5,6 +5,6 @@ import { ChatCacheService } from './cache/chat-cache.service';
 @Global()
 @Module({
   providers: [RedisService, ChatCacheService],
-  exports: [ChatCacheService],
+  exports: [RedisService, ChatCacheService],
 })
 export class RedisModule {}

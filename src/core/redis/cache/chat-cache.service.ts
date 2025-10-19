@@ -15,7 +15,7 @@ export class ChatCacheService {
     const key = `chat:${chatId}:messages:last50`;
     await this.redisClient.rpush(key, JSON.stringify(message));
     await this.redisClient.ltrim(key, -50, -1);
-    if (!(await this.redisClient.exists(key))) {
+    if (await this.redisClient.exists(key)) {
       await this.redisClient.expire(key, 60 * 60 * 24);
     }
   }
@@ -24,9 +24,5 @@ export class ChatCacheService {
     const key = `chat:${chatId}:messages:last50`;
     const messages = (await this.redisClient.lrange(key, -50, -1)) ?? [];
     return messages.map((m) => JSON.parse(m) as Message);
-  }
-
-  async invalidateChatCache(chatId: string) {
-    await this.redisClient.del(`chat:${chatId}:messages:last50`);
   }
 }

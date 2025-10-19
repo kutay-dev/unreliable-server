@@ -14,6 +14,7 @@ import { JwtService } from '@nestjs/jwt';
 import { S3Service } from '@/common/aws/s3/s3.service';
 import { LoggerService } from '@/core/logger/logger.service';
 import { SendMessageType } from '@/common/enums';
+import { RedisService } from '@/core/redis/redis.service';
 
 @WebSocketGateway({ cors: true, namespace: 'chat' })
 export class ChatGateway implements OnGatewayConnection {
@@ -22,6 +23,7 @@ export class ChatGateway implements OnGatewayConnection {
     private readonly jwtService: JwtService,
     private readonly s3Service: S3Service,
     private readonly logger: LoggerService,
+    private readonly redisService: RedisService,
   ) {
     this.logger.setModuleName(ChatGateway.name);
   }
@@ -40,6 +42,19 @@ export class ChatGateway implements OnGatewayConnection {
   @WebSocketServer() server: Server;
 
   private chatName = (chatId: string) => `chat:${chatId}`;
+
+  @SubscribeMessage('ping')
+  async ping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody(ParseJSONPipe) chatConnectionDto: ChatConnectionDto,
+  ) {
+    const userId = client.data.user.sub;
+    await this.redisService.set(`user:${userId}:online`, true, 30);
+
+    client.broadcast
+      .to(this.chatName(chatConnectionDto.chatId))
+      .emit('user:online', { userId });
+  }
 
   @SubscribeMessage('chat:join')
   async joinChat(
