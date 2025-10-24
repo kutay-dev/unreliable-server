@@ -23,15 +23,17 @@ async function bootstrap() {
     }),
   );
 
-  setupSwagger(
-    {
-      title: 'Unreliable',
-      version: '1.0.0',
-    },
-    app,
-  );
+  if (configService.getOrThrow<string>('NODE_ENV') !== 'prod') {
+    setupSwagger(
+      {
+        title: 'Unreliable',
+        version: '1.0.0',
+      },
+      app,
+    );
+  }
 
-  await app.listen(configService.get('PORT') || 3333);
+  await app.listen(Number(configService.get<string>('PORT')) || 3333);
 }
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 bootstrap();

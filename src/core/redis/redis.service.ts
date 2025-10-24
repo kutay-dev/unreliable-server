@@ -14,7 +14,7 @@ export class RedisService {
     this.logger.setModuleName(RedisService.name);
     this.redisClient = new Redis({
       host: this.configService.getOrThrow<string>('REDIS_HOST'),
-      port: this.configService.getOrThrow<number>('REDIS_PORT'),
+      port: +this.configService.getOrThrow<string>('REDIS_PORT'),
       password: this.configService.get<string>('REDIS_PASSWORD'),
       tls:
         this.configService.get<string>('REDIS_TLS') === 'true' ? {} : undefined,
