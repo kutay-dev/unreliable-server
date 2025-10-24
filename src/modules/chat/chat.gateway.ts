@@ -11,7 +11,7 @@ import { ChatService } from './chat.service';
 import { ChatConnectionDto, SendAIMessageDto, SendMessageDto } from './dto';
 import { ParseJSONPipe } from '@/common/pipes/parse-json.pipe';
 import { JwtService } from '@nestjs/jwt';
-import { S3Service } from '@/common/aws/s3/s3.service';
+import { S3Service } from '@/core/aws/s3/s3.service';
 import { LoggerService } from '@/core/logger/logger.service';
 import { SendMessageType } from '@/common/enums';
 import { RedisService } from '@/core/redis/redis.service';

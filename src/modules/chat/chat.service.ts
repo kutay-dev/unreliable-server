@@ -6,7 +6,7 @@ import {
   GetMessagesDto,
   SendMessageDto,
 } from './dto';
-import { S3Service } from '@/common/aws/s3/s3.service';
+import { S3Service } from '@/core/aws/s3/s3.service';
 import { AIMessageRole, Message } from '@prisma/client';
 import OpenAI from 'openai';
 import { noNulls } from '@/common/utils/common.utils';

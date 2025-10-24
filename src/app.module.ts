@@ -4,11 +4,11 @@ import { PrismaModule } from '@/core/prisma/prisma.module';
 import { ChatModule } from '@/modules/chat/chat.module';
 import { UserModule } from '@/modules/user/user.module';
 import { AuthModule } from '@/modules/auth/auth.module';
-import { AwsModule } from './common/aws/aws.module';
-import { LoggerModule } from './core/logger/logger.module';
-import { RedisModule } from './core/redis/redis.module';
-import { HealthModule } from './core/health/health.module';
-import { EnvModule } from './core/env';
+import { AwsModule } from '@/core/aws/aws.module';
+import { LoggerModule } from '@/core/logger/logger.module';
+import { RedisModule } from '@/core/redis/redis.module';
+import { HealthModule } from '@/core/health/health.module';
+import { EnvModule } from '@/core/env';
 
 @Module({
   imports: [

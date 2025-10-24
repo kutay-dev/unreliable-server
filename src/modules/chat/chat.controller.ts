@@ -17,7 +17,7 @@ import {
   GenerateIncrementingMessageDto,
   GetMessagesDto,
 } from './dto';
-import { S3Service } from '@/common/aws/s3/s3.service';
+import { S3Service } from '@/core/aws/s3/s3.service';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { Role } from '@/common/enums';
 
