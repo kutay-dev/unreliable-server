@@ -5,7 +5,7 @@ import { setupSwagger } from '@/common/swagger';
 import { ConfigService } from '@nestjs/config';
 import { HttpExceptionFilter } from '@/common/filters';
 import { LoggerService } from '@/core/logger/logger.service';
-import { ResponseInterceptor } from '@/core/interceptors/response.interceptor';
+import { ResponseInterceptor, LoggingInterceptor } from '@/core/interceptors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -27,7 +27,10 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter(logger));
-  app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalInterceptors(
+    new ResponseInterceptor(),
+    new LoggingInterceptor(logger),
+  );
 
   if (configService.getOrThrow<string>('NODE_ENV') !== 'prod') {
     setupSwagger(

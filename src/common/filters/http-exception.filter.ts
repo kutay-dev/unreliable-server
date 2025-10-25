@@ -12,7 +12,7 @@ import { LoggerService } from '@/core/logger/logger.service';
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   constructor(private readonly logger: LoggerService) {
-    logger.setModuleName(HttpExceptionFilter.name);
+    this.logger.setModuleName(HttpExceptionFilter.name);
   }
 
   catch(exception: unknown, host: ArgumentsHost) {
