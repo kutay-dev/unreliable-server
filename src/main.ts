@@ -1,3 +1,4 @@
+import express from 'express';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -6,9 +7,11 @@ import { ConfigService } from '@nestjs/config';
 import { HttpExceptionFilter } from '@/common/filters';
 import { LoggerService } from '@/core/logger/logger.service';
 import { ResponseInterceptor, LoggingInterceptor } from '@/core/interceptors';
+import { ExpressAdapter } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const server = express();
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
     cors: {
       origin: '*',
       methods: ['*'],
@@ -20,6 +23,7 @@ async function bootstrap() {
   const logger = app.get(LoggerService);
 
   app.enableCors();
+  app.getHttpAdapter().getInstance().set('trust proxy', true);
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // removes any properties from the incoming payload that are not declared on the dto

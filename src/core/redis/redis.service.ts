@@ -64,4 +64,8 @@ export class RedisService {
   async expire(key: string, ttlSeconds: number) {
     return await this.redisClient.expire(key, ttlSeconds);
   }
+
+  async incr(key: string) {
+    return await this.redisClient.incr(key);
+  }
 }

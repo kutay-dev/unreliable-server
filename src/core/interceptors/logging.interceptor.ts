@@ -1,4 +1,3 @@
-// src/core/interceptors/logging.interceptor.ts
 import {
   CallHandler,
   ExecutionContext,
@@ -10,7 +9,6 @@ import { LoggerService } from '@/core/logger/logger.service';
 
 function shouldLogPath(path?: string) {
   if (!path) return true;
-  // reduce noise
   if (path.startsWith('/health')) return false;
   if (path.startsWith('/docs')) return false;
   return true;
@@ -24,7 +22,7 @@ export class LoggingInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     if (context.getType() !== 'http') {
-      return next.handle(); // only log HTTP here
+      return next.handle();
     }
 
     const req = context.switchToHttp().getRequest();
@@ -76,6 +74,7 @@ export class LoggingInterceptor implements NestInterceptor {
           const statusCode = (err?.status as number) ?? 500;
           this.logger.error(
             `Response: [${method}] ${originalUrl} failed -> ${String(statusCode)} in ${String(durationMs)}ms`,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             err?.stack,
             {
               requestId,

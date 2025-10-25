@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@/core/prisma/prisma.module';
 import { ChatModule } from '@/modules/chat/chat.module';
@@ -9,6 +9,7 @@ import { LoggerModule } from '@/core/logger/logger.module';
 import { RedisModule } from '@/core/redis/redis.module';
 import { HealthModule } from '@/core/health/health.module';
 import { EnvModule } from '@/core/env';
+import { RateLimitMiddleware } from '@/core/middleware/rate-limit.middleware';
 
 @Module({
   imports: [
@@ -24,4 +25,8 @@ import { EnvModule } from '@/core/env';
     ChatModule,
   ],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RateLimitMiddleware).forRoutes('*');
+  }
+}
