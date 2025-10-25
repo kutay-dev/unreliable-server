@@ -13,11 +13,12 @@ export class ChatCacheService {
 
   async addMessage(chatId: string, message: Message) {
     const key = `chat:${chatId}:messages:last50`;
-    await this.redisClient.rpush(key, JSON.stringify(message));
-    await this.redisClient.ltrim(key, -50, -1);
-    if (await this.redisClient.exists(key)) {
-      await this.redisClient.expire(key, 60 * 60 * 24);
-    }
+    await this.redisClient
+      .multi()
+      .rpush(key, JSON.stringify(message))
+      .ltrim(key, -50, -1)
+      .expire(key, 60 * 60 * 24)
+      .exec();
   }
 
   async getLast50Messages(chatId: string): Promise<Message[]> {

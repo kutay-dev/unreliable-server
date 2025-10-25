@@ -15,7 +15,9 @@ import { S3Service } from '@/core/aws/s3/s3.service';
 import { LoggerService } from '@/core/logger/logger.service';
 import { SendMessageType } from '@/common/enums';
 import { RedisService } from '@/core/redis/redis.service';
+import { UsePipes, ValidationPipe } from '@nestjs/common';
 
+@UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 @WebSocketGateway({ cors: true, namespace: 'chat' })
 export class ChatGateway implements OnGatewayConnection {
   constructor(
@@ -30,7 +32,9 @@ export class ChatGateway implements OnGatewayConnection {
 
   handleConnection(client: Socket) {
     try {
-      const token: string = client.handshake.auth?.token;
+      const token: string =
+        client.handshake.auth?.token ??
+        client.handshake.headers?.authorization?.replace(/^Bearer\s+/i, '');
       const payload = this.jwtService.verify(token);
       client.data.user = payload;
     } catch {
