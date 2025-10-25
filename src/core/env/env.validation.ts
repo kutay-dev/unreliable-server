@@ -20,4 +20,7 @@ export const envValidationSchema = Joi.object({
   OPENAI_API_KEY: Joi.string().required(),
   OPENAI_MODEL: Joi.string().required(),
   OPENAI_MODEL_SYSTEM_INSTRUCTIONS: Joi.string().required(),
+
+  RATE_LIMIT: Joi.number().required(),
+  RATE_LIMIT_TTL: Joi.number().required(),
 });
