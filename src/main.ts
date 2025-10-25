@@ -3,6 +3,8 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { setupSwagger } from '@/common/swagger';
 import { ConfigService } from '@nestjs/config';
+import { HttpExceptionFilter } from '@/common/filters';
+import { LoggerService } from '@/core/logger/logger.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -14,6 +16,7 @@ async function bootstrap() {
   });
 
   const configService = app.get(ConfigService);
+  const logger = app.get(LoggerService);
 
   app.enableCors();
   app.useGlobalPipes(
@@ -22,6 +25,7 @@ async function bootstrap() {
       transform: true, // Converts plain json into your dto class instances and performs simple type coercion
     }),
   );
+  app.useGlobalFilters(new HttpExceptionFilter(logger));
 
   if (configService.getOrThrow<string>('NODE_ENV') !== 'prod') {
     setupSwagger(
