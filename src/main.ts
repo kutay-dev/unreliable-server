@@ -1,4 +1,5 @@
 import express from 'express';
+import helmet from 'helmet';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -23,6 +24,12 @@ async function bootstrap() {
   const logger = app.get(LoggerService);
 
   app.enableCors();
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
   app.getHttpAdapter().getInstance().set('trust proxy', true);
   app.useGlobalPipes(
     new ValidationPipe({
