@@ -16,10 +16,12 @@ import {
   CreateChatDto,
   GenerateIncrementingMessageDto,
   GetMessagesDto,
+  ScheduleMessageDto,
 } from './dto';
 import { S3Service } from '@/core/aws/s3/s3.service';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { Role } from '@/common/enums';
+import { BullmqService } from '@/core/bullmq/bullmq.service';
 
 @UseGuards(JwtGuard)
 @Controller('chat')
@@ -27,6 +29,7 @@ export class ChatController {
   constructor(
     private readonly chatService: ChatService,
     private readonly s3Service: S3Service,
+    private readonly bullmqService: BullmqService,
   ) {}
 
   @Get('list')
@@ -47,6 +50,23 @@ export class ChatController {
   @Post('get-messages')
   async getMessages(@Body() getMessagesDto: GetMessagesDto) {
     return this.chatService.getMessages(getMessagesDto);
+  }
+
+  @Post('schedule-message')
+  async scheduleMessage(
+    @Body() scheduleMessageDto: ScheduleMessageDto,
+    @CurrentUser() user: User,
+  ) {
+    return await this.bullmqService.schedule(
+      'scheduled-messages',
+      'send-message',
+      {
+        chatId: scheduleMessageDto.chatId,
+        authorId: user.id,
+        text: scheduleMessageDto.text,
+      },
+      new Date(Date.parse(scheduleMessageDto.schedule) - 10),
+    );
   }
 
   @Post('create')

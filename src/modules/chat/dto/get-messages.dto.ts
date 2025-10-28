@@ -4,7 +4,6 @@ import { IsOptional, IsInt, Min, IsUUID, Max } from 'class-validator';
 
 export class GetMessagesDto {
   @ApiProperty({ example: '686fd61d-6090-487a-97cb-b9255e88682b' })
-  @ApiProperty()
   @IsUUID()
   chatId: string;
 

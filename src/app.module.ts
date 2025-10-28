@@ -1,5 +1,5 @@
 import { Module, MiddlewareConsumer } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from '@/core/prisma/prisma.module';
 import { ChatModule } from '@/modules/chat/chat.module';
 import { UserModule } from '@/modules/user/user.module';
@@ -10,6 +10,8 @@ import { RedisModule } from '@/core/redis/redis.module';
 import { HealthModule } from '@/core/health/health.module';
 import { EnvModule } from '@/core/env';
 import { RateLimitMiddleware } from '@/core/middleware/rate-limit.middleware';
+import { BullmqModule } from '@/core/bullmq/bullmq.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -18,6 +20,18 @@ import { RateLimitMiddleware } from '@/core/middleware/rate-limit.middleware';
     LoggerModule,
     PrismaModule,
     RedisModule,
+    BullmqModule,
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (cs: ConfigService) => ({
+        connection: {
+          host: cs.getOrThrow<string>('REDIS_HOST'),
+          port: +cs.getOrThrow<string>('REDIS_PORT'),
+          password: cs.get<string>('REDIS_PASSWORD'),
+          tls: cs.get<string>('REDIS_TLS') === 'true' ? {} : undefined,
+        },
+      }),
+    }),
     HealthModule,
     AwsModule,
     AuthModule,
