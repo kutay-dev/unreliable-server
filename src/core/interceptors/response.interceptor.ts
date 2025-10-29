@@ -30,7 +30,11 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
             res.fromCache = data.fromCache;
           }
           if (Array.isArray(data?.data ?? data)) {
-            res.totalCount = data?.data.length ?? data.length;
+            res.totalCount = data?.data
+              ? data?.data.length
+              : data
+                ? data.length
+                : 0;
           }
         }
         return res;
