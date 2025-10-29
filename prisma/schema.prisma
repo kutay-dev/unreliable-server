@@ -69,6 +69,7 @@ model Message {
   createdAt DateTime  @default(now())
   deletedAt DateTime?
 
+  @@index([text(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_messages_content_trgm")
   @@map("messages")
 }
 

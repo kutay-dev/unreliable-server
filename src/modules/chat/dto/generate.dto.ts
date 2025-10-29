@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, IsUUID, Min } from 'class-validator';
 
-export class GenerateIncrementingMessageDto {
+export class GenerateMessageDto {
   @ApiProperty({ example: '5ae26726-cd95-4899-9de9-d2ee010110bf' })
   @IsUUID()
   authorId: string;

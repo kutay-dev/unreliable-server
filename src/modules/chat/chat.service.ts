@@ -2,14 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/core/prisma/prisma.service';
 import {
   CreateChatDto,
-  GenerateIncrementingMessageDto,
+  GenerateMessageDto,
   GetMessagesDto,
+  SearchMessageDto,
   SendMessageDto,
 } from './dto';
 import { S3Service } from '@/core/aws/s3/s3.service';
 import { AIMessageRole, Message } from '@prisma/client';
 import OpenAI from 'openai';
-import { noNulls } from '@/common/utils/common.utils';
+import { getRandomSentence, noNulls } from '@/common/utils/common.utils';
 import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '@/core/redis/redis.service';
@@ -134,6 +135,18 @@ export class ChatService {
     );
   }
 
+  async searchMessage(searchMessageDto: SearchMessageDto) {
+    return await this.prisma.message.findMany({
+      where: {
+        chatId: searchMessageDto.chatId,
+        text: { contains: searchMessageDto.query, mode: 'insensitive' },
+        deletedAt: null,
+      },
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async sendMessage(sendMessageDto: SendMessageDto) {
     const message = await this.prisma.message.create({
       data: {
@@ -176,7 +189,7 @@ export class ChatService {
     );
   }
 
-  async generate(generateDto: GenerateIncrementingMessageDto) {
+  async generateIncrementingMessages(generateDto: GenerateMessageDto) {
     const generatedMessages: Message[] = [];
     for (let i = 0; i < generateDto.generations; i++) {
       const message = await this.prisma.message.create({
@@ -190,6 +203,16 @@ export class ChatService {
     }
 
     return generatedMessages;
+  }
+
+  async generateSentences(generateDto: GenerateMessageDto) {
+    return await this.prisma.message.createMany({
+      data: Array.from({ length: generateDto.generations }, () => ({
+        authorId: generateDto.authorId,
+        chatId: generateDto.chatId,
+        text: getRandomSentence(),
+      })),
+    });
   }
 
   async sendAIMessage(content: string, userId: string) {

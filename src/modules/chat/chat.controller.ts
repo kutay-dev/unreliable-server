@@ -14,7 +14,7 @@ import { ChatAuthGuard } from './guards';
 import { JwtGuard } from '@/common/guards/jwt.guard';
 import {
   CreateChatDto,
-  GenerateIncrementingMessageDto,
+  GenerateMessageDto,
   GetMessagesDto,
   ScheduleMessageDto,
 } from './dto';
@@ -52,6 +52,14 @@ export class ChatController {
     return this.chatService.getMessages(getMessagesDto);
   }
 
+  @Get('search-message')
+  async searchMessage(
+    @Query('chatId') chatId: string,
+    @Query('query') query: string,
+  ) {
+    return this.chatService.searchMessage({ chatId, query });
+  }
+
   @Post('schedule-message')
   async scheduleMessage(
     @Body() scheduleMessageDto: ScheduleMessageDto,
@@ -83,8 +91,14 @@ export class ChatController {
   }
 
   @Roles(Role.GOD)
-  @Post('generate')
-  generateMessages(@Body() generateDto: GenerateIncrementingMessageDto) {
-    return this.chatService.generate(generateDto);
+  @Post('generate-incrementing')
+  generateIncrementingMessages(@Body() generateDto: GenerateMessageDto) {
+    return this.chatService.generateIncrementingMessages(generateDto);
+  }
+
+  @Roles(Role.GOD)
+  @Post('generate-sentence')
+  generateSentences(@Body() generateDto: GenerateMessageDto) {
+    return this.chatService.generateSentences(generateDto);
   }
 }
