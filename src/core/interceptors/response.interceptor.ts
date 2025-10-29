@@ -6,12 +6,17 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Observable, map } from 'rxjs';
 
 @Injectable()
 export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
+  constructor(private readonly configService: ConfigService) {}
+
   intercept(_: ExecutionContext, next: CallHandler): Observable<any> {
-    const isProd = process.env.NODE_END === Environment.PROD;
+    const isProd =
+      this.configService.getOrThrow<Environment>('NODE_ENV') ===
+      Environment.PROD;
 
     return next.handle().pipe(
       map((data) => {

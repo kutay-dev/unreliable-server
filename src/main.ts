@@ -9,6 +9,7 @@ import { HttpExceptionFilter } from '@/common/filters';
 import { LoggerService } from '@/core/logger/logger.service';
 import { ResponseInterceptor, LoggingInterceptor } from '@/core/interceptors';
 import { ExpressAdapter } from '@nestjs/platform-express';
+import { Environment } from '@/common/enums';
 
 async function bootstrap() {
   const server = express();
@@ -39,11 +40,11 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new HttpExceptionFilter(logger));
   app.useGlobalInterceptors(
-    new ResponseInterceptor(),
+    new ResponseInterceptor(configService),
     new LoggingInterceptor(logger),
   );
 
-  if (configService.getOrThrow<string>('NODE_ENV') !== 'prod') {
+  if (configService.getOrThrow<Environment>('NODE_ENV') !== Environment.PROD) {
     setupSwagger(
       {
         title: 'Unreliable',

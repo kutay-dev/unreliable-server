@@ -1,7 +1,10 @@
+import { Environment } from '@/common/enums';
 import Joi from 'joi';
 
 export const envValidationSchema = Joi.object({
-  NODE_ENV: Joi.string().valid('dev', 'stg', 'prod').default('dev'),
+  NODE_ENV: Joi.string()
+    .valid(Environment.DEV, Environment.STG, Environment.PROD)
+    .default(Environment.DEV),
   PORT: Joi.number().default(3333),
 
   JWT_SECRET: Joi.string().required(),
