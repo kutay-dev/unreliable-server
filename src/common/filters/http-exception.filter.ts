@@ -6,7 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { ErrorResponse } from '@/common/types';
+import { IErrorResponse } from '@/common/types';
 import { LoggerService } from '@/core/logger/logger.service';
 
 @Catch()
@@ -52,6 +52,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: req.url,
-    } as ErrorResponse);
+    } as IErrorResponse);
   }
 }

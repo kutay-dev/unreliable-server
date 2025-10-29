@@ -14,6 +14,7 @@ import { getRandomSentence, noNulls } from '@/common/utils/common.utils';
 import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '@/core/redis/redis.service';
+import { FromCache } from '@/common/enums';
 
 @Injectable()
 export class ChatService {
@@ -82,6 +83,7 @@ export class ChatService {
 
   async getMessages(getMessagesDto: GetMessagesDto) {
     let messages: Message[];
+    let fromCache: FromCache = FromCache.FALSE;
 
     if (!getMessagesDto.cursor) {
       const cached = await this.chatCacheService.getLast50Messages(
@@ -90,6 +92,7 @@ export class ChatService {
 
       if (cached.length === 50) {
         messages = cached;
+        fromCache = FromCache.TRUE;
       } else {
         const remaining = 50 - cached.length;
         let remainingMessages: Message[];
@@ -102,6 +105,7 @@ export class ChatService {
             skip: 1,
             take: remaining,
           });
+          fromCache = FromCache.PARTIAL;
         } else {
           remainingMessages = await this.prisma.message.findMany({
             where: { chatId: getMessagesDto.chatId, deletedAt: null },
@@ -124,7 +128,7 @@ export class ChatService {
       messages.reverse();
     }
 
-    return await Promise.all(
+    const data = await Promise.all(
       messages.map(async (message) => {
         if (!message.imageUrl) return message;
         const presignedUrl = await this.s3Service.presignDownloadUrl(
@@ -133,6 +137,8 @@ export class ChatService {
         return { ...message, imageUrl: presignedUrl };
       }),
     );
+
+    return { data, fromCache };
   }
 
   async searchMessage(searchMessageDto: SearchMessageDto) {
