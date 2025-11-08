@@ -32,6 +32,7 @@ model User {
   messages  Message[]
   members   ChatMember[]
   AIMessage AIMessage[]
+  pollVotes PollVote[]
 
   @@index([username], map: "idx_users_username")
   @@map("users")
@@ -72,8 +73,9 @@ model Message {
   createdAt DateTime  @default(now()) @map("created_at")
   deletedAt DateTime? @map("deleted_at")
 
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  poll   Poll?
+  author User  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  chat   Chat  @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
   @@index([chatId, id])
   @@index([authorId])
@@ -92,4 +94,37 @@ model AIMessage {
 
   @@index([userId])
   @@map("ai_messages")
+}
+
+model Poll {
+  id        String @id @default(uuid()) @db.Uuid
+  title     String @map("title") @db.VarChar(100)
+  messageId String @unique @map("message_id")
+
+  options PollOption[]
+  message Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("polls")
+}
+
+model PollOption {
+  id     String @id @default(uuid()) @db.Uuid
+  text   String @map("text") @db.VarChar(50)
+  pollId String @map("poll_id") @db.Uuid
+
+  poll  Poll?      @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+
+  @@map("poll_options")
+}
+
+model PollVote {
+  id       String @id @default(uuid()) @db.Uuid
+  optionId String @map("option_id") @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+
+  voter      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pollOption PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@map("poll_votes")
 }

@@ -2,10 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/core/prisma/prisma.service';
 import {
   CreateChatDto,
+  CreatePollDto,
   GenerateMessageDto,
   GetMessagesDto,
   SearchMessageDto,
   SendMessageDto,
+  VoteOnOptionDto,
 } from './dto';
 import { S3Service } from '@/core/aws/s3/s3.service';
 import { AIMessageRole, Message } from '@prisma/client';
@@ -100,6 +102,15 @@ export class ChatService {
         if (cached.length > 0) {
           remainingMessages = await this.prisma.message.findMany({
             where: { chatId: getMessagesDto.chatId, deletedAt: null },
+            include: {
+              poll: {
+                include: {
+                  options: {
+                    include: { votes: true },
+                  },
+                },
+              },
+            },
             orderBy: { id: 'desc' },
             cursor: { id: cached[0].id },
             skip: 1,
@@ -109,6 +120,15 @@ export class ChatService {
         } else {
           remainingMessages = await this.prisma.message.findMany({
             where: { chatId: getMessagesDto.chatId, deletedAt: null },
+            include: {
+              poll: {
+                include: {
+                  options: {
+                    include: { votes: true },
+                  },
+                },
+              },
+            },
             orderBy: { id: 'desc' },
             take: remaining,
           });
@@ -118,6 +138,15 @@ export class ChatService {
     } else {
       messages = await this.prisma.message.findMany({
         where: { chatId: getMessagesDto.chatId, deletedAt: null },
+        include: {
+          poll: {
+            include: {
+              options: {
+                include: { votes: true },
+              },
+            },
+          },
+        },
         orderBy: { id: 'desc' },
         take: getMessagesDto.limit,
         cursor: getMessagesDto.cursor
@@ -265,6 +294,38 @@ export class ChatService {
         role: AIMessageRole.ASSISTANT,
         userId: userId,
         content: response.choices[0].message.content || 'null',
+      },
+    });
+  }
+
+  async createPoll(createPollDto: CreatePollDto) {
+    return await this.prisma.poll.create({
+      data: {
+        title: createPollDto.title,
+        message: {
+          create: {
+            chatId: createPollDto.chatId,
+            authorId: createPollDto.userId,
+          },
+        },
+        options: {
+          createMany: {
+            data: createPollDto.options.map((text) => ({ text })),
+          },
+        },
+      },
+      include: {
+        message: true,
+        options: true,
+      },
+    });
+  }
+
+  async voteOnOption(voteOnOptionDto: VoteOnOptionDto) {
+    return await this.prisma.pollVote.create({
+      data: {
+        userId: voteOnOptionDto.userId,
+        optionId: voteOnOptionDto.optionId,
       },
     });
   }

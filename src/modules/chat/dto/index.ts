@@ -6,3 +6,5 @@ export * from './generate.dto';
 export * from './send-ai-message.dto';
 export * from './schedule-message.dto';
 export * from './search-message.dto';
+export * from './create-poll.dto';
+export * from './vote-on-option.dto';

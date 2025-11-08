@@ -8,7 +8,13 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
-import { ChatConnectionDto, SendAIMessageDto, SendMessageDto } from './dto';
+import {
+  ChatConnectionDto,
+  CreatePollDto,
+  SendAIMessageDto,
+  SendMessageDto,
+  VoteOnOptionDto,
+} from './dto';
 import { ParseJSONPipe } from '@/common/pipes/parse-json.pipe';
 import { JwtService } from '@nestjs/jwt';
 import { S3Service } from '@/core/aws/s3/s3.service';
@@ -148,5 +154,33 @@ export class ChatGateway implements OnGatewayConnection {
       String(client.data.user.sub),
     );
     client.emit('ai:receive', aiReply);
+  }
+
+  @SubscribeMessage('poll:create')
+  async createPoll(
+    @ConnectedSocket() client: Socket,
+    @MessageBody(ParseJSONPipe) createPollDto: CreatePollDto,
+  ) {
+    const poll = await this.chatService.createPoll({
+      ...createPollDto,
+      userId: client.data.user.sub,
+    });
+    client.broadcast
+      .to(this.chatName(createPollDto.chatId))
+      .emit('poll:receive', poll);
+  }
+
+  @SubscribeMessage('poll:vote')
+  async voteOnOption(
+    @ConnectedSocket() client: Socket,
+    @MessageBody(ParseJSONPipe) voteOnOptionDto: VoteOnOptionDto,
+  ) {
+    const vote = await this.chatService.voteOnOption({
+      ...voteOnOptionDto,
+      userId: client.data.user.sub,
+    });
+    client.broadcast
+      .to(this.chatName(voteOnOptionDto.chatId))
+      .emit('poll:receive:vote', vote);
   }
 }
