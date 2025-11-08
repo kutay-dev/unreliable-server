@@ -22,6 +22,7 @@ import { LoggerService } from '@/core/logger/logger.service';
 import { SendMessageType } from '@/common/enums';
 import { RedisService } from '@/core/redis/redis.service';
 import { UsePipes, ValidationPipe } from '@nestjs/common';
+import { emitToRoom } from '@/common/utils/common.utils';
 
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 @WebSocketGateway({ cors: true, namespace: 'chat' })
@@ -61,9 +62,13 @@ export class ChatGateway implements OnGatewayConnection {
     const userId = client.data.user.sub;
     await this.redisService.set(`user:${userId}:online`, true, 30);
 
-    client.broadcast
-      .to(this.chatName(chatConnectionDto.chatId))
-      .emit('user:online', { userId });
+    emitToRoom({
+      client,
+      server: this.server,
+      chatId: chatConnectionDto.chatId,
+      socket: 'user:online',
+      payload: { userId },
+    });
   }
 
   @SubscribeMessage('chat:join')
@@ -73,9 +78,15 @@ export class ChatGateway implements OnGatewayConnection {
   ) {
     const chatName = this.chatName(joinChatDto.chatId);
     await client.join(chatName);
-    this.server
-      .to(chatName)
-      .emit('chat:join', { userId: client.data.user.sub });
+
+    emitToRoom({
+      client,
+      server: this.server,
+      chatId: joinChatDto.chatId,
+      socket: 'chat:join',
+      payload: { userId: client.data.user.sub },
+    });
+
     this.logger.log(
       `author ${client?.data?.user?.sub} connected to ${chatName}`,
     );
@@ -136,12 +147,16 @@ export class ChatGateway implements OnGatewayConnection {
       await this.chatService.deleteMessage(sendMessageDto.messageId!);
     }
 
-    client.broadcast
-      .to(this.chatName(sendMessageDto.chatId!))
-      .emit('message:receive', {
+    emitToRoom({
+      client,
+      server: this.server,
+      chatId: sendMessageDto.chatId!,
+      socket: 'message:receive',
+      payload: {
         type: sendMessageDto.type,
         ...payload,
-      });
+      },
+    });
   }
 
   @SubscribeMessage('ai:send')
@@ -165,9 +180,14 @@ export class ChatGateway implements OnGatewayConnection {
       ...createPollDto,
       userId: client.data.user.sub,
     });
-    client.broadcast
-      .to(this.chatName(createPollDto.chatId))
-      .emit('poll:receive', poll);
+
+    emitToRoom({
+      client,
+      server: this.server,
+      chatId: createPollDto.chatId,
+      socket: 'poll:receive',
+      payload: poll,
+    });
   }
 
   @SubscribeMessage('poll:vote')
@@ -179,8 +199,13 @@ export class ChatGateway implements OnGatewayConnection {
       ...voteOnOptionDto,
       userId: client.data.user.sub,
     });
-    client.broadcast
-      .to(this.chatName(voteOnOptionDto.chatId))
-      .emit('poll:receive:vote', vote);
+
+    emitToRoom({
+      client,
+      server: this.server,
+      chatId: voteOnOptionDto.chatId,
+      socket: 'poll:receive:vote',
+      payload: vote,
+    });
   }
 }

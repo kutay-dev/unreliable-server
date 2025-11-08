@@ -1,4 +1,6 @@
 import { WORDS } from '../constants/words';
+import { Environment } from '../enums';
+import { IEmitToRoomProps } from '../types';
 
 export const generateRandomComplexString = (length: number) => {
   const chars =
@@ -20,4 +22,16 @@ export const noNulls = <T extends object>(obj: T): T => {
   return Object.fromEntries(
     Object.entries(obj).filter(([, v]) => v != null),
   ) as T;
+};
+
+export const emitToRoom = (emitProps: IEmitToRoomProps) => {
+  if (process.env.NODE_ENV === Environment.PROD) {
+    emitProps.client.broadcast
+      .to(`chat:${emitProps.chatId}`)
+      .emit(emitProps.socket, emitProps.payload);
+  } else {
+    emitProps.server
+      .to(`chat:${emitProps.chatId}`)
+      .emit(emitProps.socket, emitProps.payload);
+  }
 };

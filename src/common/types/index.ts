@@ -1,5 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { FromCache } from '../enums';
+import { Server, Socket } from 'socket.io';
 
 export type JwtPayload = {
   sub: string;
@@ -20,4 +21,12 @@ export interface IErrorResponse {
   statusCode: HttpStatus;
   timestamp: string;
   path: string;
+}
+
+export interface IEmitToRoomProps {
+  client: Socket;
+  server: Server;
+  chatId: string;
+  socket: string;
+  payload: any;
 }
