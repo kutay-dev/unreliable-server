@@ -112,9 +112,10 @@ model PollOption {
   text   String @map("text") @db.VarChar(50)
   pollId String @map("poll_id") @db.Uuid
 
-  poll  Poll?      @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
   votes PollVote[]
 
+  @@index([pollId])
   @@map("poll_options")
 }
 
@@ -126,5 +127,7 @@ model PollVote {
   voter      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   pollOption PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
 
+  @@index([optionId])
+  @@unique([userId, optionId])
   @@map("poll_votes")
 }
