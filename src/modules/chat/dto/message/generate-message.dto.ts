@@ -13,5 +13,5 @@ export class GenerateMessageDto {
   @ApiProperty({ example: 10 })
   @IsInt()
   @Min(1)
-  generations: number;
+  count: number;
 }

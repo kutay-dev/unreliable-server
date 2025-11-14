@@ -15,6 +15,4 @@ export class CreatePollDto {
   @ArrayMinSize(2)
   @IsString({ each: true })
   options: string[];
-
-  userId: string;
 }

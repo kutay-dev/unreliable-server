@@ -1,5 +1,6 @@
 import { IsULID } from '@/common/decorators/is-ulid.decorator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { IsOptional, IsInt, Min, IsUUID, Max } from 'class-validator';
 
 export class GetMessagesDto {
@@ -17,5 +18,6 @@ export class GetMessagesDto {
   @IsInt()
   @Min(1)
   @Max(250)
+  @Type(() => Number)
   limit?: number;
 }

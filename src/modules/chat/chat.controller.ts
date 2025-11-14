@@ -17,6 +17,7 @@ import {
   GenerateMessageDto,
   GetMessagesDto,
   ScheduleMessageDto,
+  SendAIMessageDto,
 } from './dto';
 import { S3Service } from '@/core/aws/s3/s3.service';
 import { Roles } from '@/common/decorators/roles.decorator';
@@ -42,13 +43,13 @@ export class ChatController {
   async joinChat(@Param('id') chatId: string, @CurrentUser() user: User) {
     const isMember = await this.chatService.validateChatMember(user.id, chatId);
     if (!isMember) {
-      await this.chatService.insertMember({ userId: user.id, chatId });
+      await this.chatService.insertMember(user.id, chatId);
     }
     return isMember;
   }
 
-  @Post('get-messages')
-  async getMessages(@Body() getMessagesDto: GetMessagesDto) {
+  @Get('get-messages')
+  async getMessages(@Query() getMessagesDto: GetMessagesDto) {
     return this.chatService.getMessages(getMessagesDto);
   }
 
@@ -58,6 +59,17 @@ export class ChatController {
     @Query('query') query: string,
   ) {
     return this.chatService.searchMessage({ chatId, query });
+  }
+
+  @Post('send-ai-message')
+  async sendAIMessage(
+    @Body() sendAIMessageDto: SendAIMessageDto,
+    @CurrentUser() user: User,
+  ) {
+    return await this.chatService.sendAIMessage(
+      sendAIMessageDto.content,
+      user.id,
+    );
   }
 
   @Post('schedule-message')
@@ -92,13 +104,13 @@ export class ChatController {
 
   @Roles(Role.GOD)
   @Post('generate-incrementing')
-  generateIncrementingMessages(@Body() generateDto: GenerateMessageDto) {
-    return this.chatService.generateIncrementingMessages(generateDto);
+  generateIncrementingMessages(@Body() generateMessageDto: GenerateMessageDto) {
+    return this.chatService.generateIncrementingMessages(generateMessageDto);
   }
 
   @Roles(Role.GOD)
   @Post('generate-sentence')
-  generateSentences(@Body() generateDto: GenerateMessageDto) {
-    return this.chatService.generateSentences(generateDto);
+  generateSentences(@Body() generateMessageDto: GenerateMessageDto) {
+    return this.chatService.generateSentences(generateMessageDto);
   }
 }

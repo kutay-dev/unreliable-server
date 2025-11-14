@@ -2,15 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/core/prisma/prisma.service';
 import {
   CreateChatDto,
+  SendMessageDto,
   CreatePollDto,
   GenerateMessageDto,
   GetMessagesDto,
   SearchMessageDto,
-  SendMessageDto,
-  VoteOnOptionDto,
+  VoteForPollDto,
 } from './dto';
 import { S3Service } from '@/core/aws/s3/s3.service';
-import { AIMessageRole, Message } from '@prisma/client';
+import { AIMessageRole, Message, Prisma } from '@prisma/client';
 import OpenAI from 'openai';
 import { getRandomSentence, noNulls } from '@/common/utils/common.utils';
 import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';
@@ -35,11 +35,13 @@ export class ChatService {
   }
 
   async createChat(createChatDto: CreateChatDto) {
+    const { name, type, password } = createChatDto;
+
     return await this.prisma.chat.create({
       data: {
-        name: createChatDto.name,
-        type: createChatDto.type,
-        password: createChatDto.password,
+        name,
+        type,
+        password,
       },
     });
   }
@@ -52,7 +54,7 @@ export class ChatService {
     return !!member;
   }
 
-  async insertMember({ userId, chatId }: { userId: string; chatId: string }) {
+  async insertMember(userId: string, chatId: string) {
     return await this.prisma.chatMember.upsert({
       where: { userId_chatId: { userId, chatId } },
       create: { userId, chatId },
@@ -84,14 +86,36 @@ export class ChatService {
   }
 
   async getMessages(getMessagesDto: GetMessagesDto) {
+    const { chatId, cursor, limit } = getMessagesDto;
+
     let messages: Message[];
     let fromCache: FromCache = FromCache.FALSE;
 
-    if (!getMessagesDto.cursor) {
-      const cached = await this.chatCacheService.getLast50Messages(
-        getMessagesDto.chatId,
-      );
+    const getMessagesQuery: Prisma.MessageFindManyArgs = {
+      where: { chatId, deletedAt: null },
+      include: {
+        poll: {
+          select: {
+            id: true,
+            title: true,
+            options: {
+              select: {
+                id: true,
+                text: true,
+                votes: {
+                  select: {
+                    userId: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
 
+    if (!cursor) {
+      const cached = await this.chatCacheService.getLast50Messages(chatId);
       if (cached.length === 50) {
         messages = cached;
         fromCache = FromCache.TRUE;
@@ -101,58 +125,29 @@ export class ChatService {
 
         if (cached.length > 0) {
           remainingMessages = await this.prisma.message.findMany({
-            where: { chatId: getMessagesDto.chatId, deletedAt: null },
-            include: {
-              poll: {
-                include: {
-                  options: {
-                    include: { votes: true },
-                  },
-                },
-              },
-            },
-            orderBy: { id: 'desc' },
+            ...getMessagesQuery,
             cursor: { id: cached[0].id },
             skip: 1,
             take: remaining,
+            orderBy: { id: 'desc' },
           });
           fromCache = FromCache.PARTIAL;
         } else {
           remainingMessages = await this.prisma.message.findMany({
-            where: { chatId: getMessagesDto.chatId, deletedAt: null },
-            include: {
-              poll: {
-                include: {
-                  options: {
-                    include: { votes: true },
-                  },
-                },
-              },
-            },
-            orderBy: { id: 'desc' },
+            ...getMessagesQuery,
             take: remaining,
+            orderBy: { id: 'desc' },
           });
         }
         messages = [...remainingMessages.reverse(), ...cached];
       }
     } else {
       messages = await this.prisma.message.findMany({
-        where: { chatId: getMessagesDto.chatId, deletedAt: null },
-        include: {
-          poll: {
-            include: {
-              options: {
-                include: { votes: true },
-              },
-            },
-          },
-        },
+        ...getMessagesQuery,
+        take: limit,
+        cursor: cursor ? { id: cursor } : undefined,
+        skip: cursor ? 1 : 0,
         orderBy: { id: 'desc' },
-        take: getMessagesDto.limit,
-        cursor: getMessagesDto.cursor
-          ? { id: getMessagesDto.cursor }
-          : undefined,
-        skip: getMessagesDto.cursor ? 1 : 0,
       });
       messages.reverse();
     }
@@ -171,10 +166,12 @@ export class ChatService {
   }
 
   async searchMessage(searchMessageDto: SearchMessageDto) {
+    const { chatId, query } = searchMessageDto;
+
     return await this.prisma.message.findMany({
       where: {
-        chatId: searchMessageDto.chatId,
-        text: { contains: searchMessageDto.query, mode: 'insensitive' },
+        chatId,
+        text: { contains: query, mode: 'insensitive' },
         deletedAt: null,
       },
       take: 20,
@@ -182,21 +179,19 @@ export class ChatService {
     });
   }
 
-  async sendMessage(sendMessageDto: SendMessageDto) {
+  async sendMessage(sendMessageDto: SendMessageDto & { authorId: string }) {
+    const { authorId, chatId, text, uniqueFileName } = sendMessageDto;
+
     const message = await this.prisma.message.create({
       data: {
-        authorId: sendMessageDto.authorId!,
-        chatId: sendMessageDto.chatId!,
-        text: sendMessageDto.text,
-        imageUrl: sendMessageDto.uniqueFileName,
+        authorId,
+        chatId,
+        text,
+        imageUrl: uniqueFileName,
       },
     });
 
-    await this.chatCacheService.addMessage(
-      sendMessageDto.chatId!,
-      noNulls(message),
-    );
-
+    await this.chatCacheService.addMessage(chatId, noNulls(message));
     return message;
   }
 
@@ -209,6 +204,7 @@ export class ChatService {
     });
 
     await this.redisService.del(`chat:${editedMessage.chatId}:messages:last50`);
+    return editedMessage;
   }
 
   async deleteMessage(id: string) {
@@ -222,15 +218,19 @@ export class ChatService {
     await this.redisService.del(
       `chat:${deletedMessage.chatId}:messages:last50`,
     );
+
+    return deletedMessage;
   }
 
-  async generateIncrementingMessages(generateDto: GenerateMessageDto) {
+  async generateIncrementingMessages(generateMessageDto: GenerateMessageDto) {
+    const { count, authorId, chatId } = generateMessageDto;
+
     const generatedMessages: Message[] = [];
-    for (let i = 0; i < generateDto.generations; i++) {
+    for (let i = 0; i < count; i++) {
       const message = await this.prisma.message.create({
         data: {
-          authorId: generateDto.authorId,
-          chatId: generateDto.chatId,
+          authorId,
+          chatId,
           text: String(i + 1),
         },
       });
@@ -240,11 +240,13 @@ export class ChatService {
     return generatedMessages;
   }
 
-  async generateSentences(generateDto: GenerateMessageDto) {
+  async generateSentences(generateMessageDto: GenerateMessageDto) {
+    const { count, authorId, chatId } = generateMessageDto;
+
     return await this.prisma.message.createMany({
-      data: Array.from({ length: generateDto.generations }, () => ({
-        authorId: generateDto.authorId,
-        chatId: generateDto.chatId,
+      data: Array.from({ length: count }, () => ({
+        authorId,
+        chatId,
         text: getRandomSentence(),
       })),
     });
@@ -298,19 +300,21 @@ export class ChatService {
     });
   }
 
-  async createPoll(createPollDto: CreatePollDto) {
+  async createPoll(createPollDto: CreatePollDto & { userId: string }) {
+    const { title, chatId, userId, options } = createPollDto;
+
     return await this.prisma.poll.create({
       data: {
-        title: createPollDto.title,
+        title,
         message: {
           create: {
-            chatId: createPollDto.chatId,
-            authorId: createPollDto.userId,
+            chatId,
+            authorId: userId,
           },
         },
         options: {
           createMany: {
-            data: createPollDto.options.map((text) => ({ text })),
+            data: options.map((text) => ({ text })),
           },
         },
       },
@@ -321,11 +325,13 @@ export class ChatService {
     });
   }
 
-  async voteOnOption(voteOnOptionDto: VoteOnOptionDto) {
+  async voteForPoll(voteForPollDto: VoteForPollDto & { userId: string }) {
+    const { userId, optionId } = voteForPollDto;
+
     return await this.prisma.pollVote.create({
       data: {
-        userId: voteOnOptionDto.userId,
-        optionId: voteOnOptionDto.optionId,
+        userId,
+        optionId,
       },
     });
   }

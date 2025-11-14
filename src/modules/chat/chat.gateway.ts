@@ -10,16 +10,16 @@ import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import {
   ChatConnectionDto,
-  CreatePollDto,
-  SendAIMessageDto,
   SendMessageDto,
-  VoteOnOptionDto,
+  CreatePollDto,
+  DeleteMessageDto,
+  UpdateMessageDto,
+  VoteForPollDto,
 } from './dto';
 import { ParseJSONPipe } from '@/common/pipes/parse-json.pipe';
 import { JwtService } from '@nestjs/jwt';
 import { S3Service } from '@/core/aws/s3/s3.service';
 import { LoggerService } from '@/core/logger/logger.service';
-import { SendMessageType } from '@/common/enums';
 import { RedisService } from '@/core/redis/redis.service';
 import { UsePipes, ValidationPipe } from '@nestjs/common';
 import { emitToRoom } from '@/common/utils/common.utils';
@@ -106,69 +106,72 @@ export class ChatGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) sendMessageDto: SendMessageDto,
   ) {
-    let payload: SendMessageDto & { imageUrl?: string | null } = {};
+    const { chatId, text, uniqueFileName } = sendMessageDto;
+    const authorId = client.data.user.sub;
+    const imageUrl = uniqueFileName
+      ? await this.s3Service.presignDownloadUrl(uniqueFileName)
+      : null;
 
-    if (sendMessageDto.type === SendMessageType.POST) {
-      const imageUrl: string | null = sendMessageDto.uniqueFileName
-        ? await this.s3Service.presignDownloadUrl(sendMessageDto.uniqueFileName)
-        : null;
-
-      payload = {
-        authorId: client.data.user.sub,
-        text: sendMessageDto.text,
-        imageUrl,
-      };
-
-      await this.chatService.sendMessage({
-        chatId: sendMessageDto.chatId,
-        authorId: client.data.user.sub,
-        text: sendMessageDto.text,
-        uniqueFileName: sendMessageDto.uniqueFileName,
-      });
-    }
-
-    if (sendMessageDto.type === SendMessageType.PATCH) {
-      payload = {
-        messageId: sendMessageDto.messageId,
-        text: sendMessageDto.text,
-      };
-
-      await this.chatService.editMessage(
-        sendMessageDto.messageId!,
-        sendMessageDto.text!,
-      );
-    }
-
-    if (sendMessageDto.type === SendMessageType.DELETE) {
-      payload = {
-        messageId: sendMessageDto.messageId,
-      };
-
-      await this.chatService.deleteMessage(sendMessageDto.messageId!);
-    }
+    await this.chatService.sendMessage({
+      chatId,
+      authorId,
+      text,
+      uniqueFileName,
+    });
 
     emitToRoom({
       client,
       server: this.server,
-      chatId: sendMessageDto.chatId!,
-      socket: 'message:receive',
+      chatId,
+      socket: 'message:sent',
       payload: {
-        type: sendMessageDto.type,
-        ...payload,
+        authorId,
+        text,
+        imageUrl,
       },
     });
   }
 
-  @SubscribeMessage('ai:send')
-  async sendAI(
+  @SubscribeMessage('message:update')
+  async updateMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody(ParseJSONPipe) sendAIMessageDto: SendAIMessageDto,
+    @MessageBody(ParseJSONPipe) updateMessageDto: UpdateMessageDto,
   ) {
-    const aiReply = await this.chatService.sendAIMessage(
-      sendAIMessageDto.content,
-      String(client.data.user.sub),
+    const message = await this.chatService.editMessage(
+      updateMessageDto.messageId,
+      updateMessageDto.text,
     );
-    client.emit('ai:receive', aiReply);
+
+    emitToRoom({
+      client,
+      server: this.server,
+      chatId: message.chatId,
+      socket: 'message:updated',
+      payload: {
+        messageId: updateMessageDto.messageId,
+        text: updateMessageDto.text,
+      },
+    });
+  }
+
+  @SubscribeMessage('message:delete')
+  async deleteMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody(ParseJSONPipe) deleteMessageDto: DeleteMessageDto,
+  ) {
+    const message = await this.chatService.deleteMessage(
+      deleteMessageDto.messageId,
+    );
+
+    emitToRoom({
+      client,
+      server: this.server,
+      chatId: message.chatId,
+      socket: 'message:deleted',
+      payload: {
+        messageId: deleteMessageDto.messageId,
+      },
+    });
   }
 
   @SubscribeMessage('poll:create')
@@ -185,25 +188,25 @@ export class ChatGateway implements OnGatewayConnection {
       client,
       server: this.server,
       chatId: createPollDto.chatId,
-      socket: 'poll:receive',
+      socket: 'poll:created',
       payload: poll,
     });
   }
 
   @SubscribeMessage('poll:vote')
-  async voteOnOption(
+  async voteForPoll(
     @ConnectedSocket() client: Socket,
-    @MessageBody(ParseJSONPipe) voteOnOptionDto: VoteOnOptionDto,
+    @MessageBody(ParseJSONPipe) voteForPollDto: VoteForPollDto,
   ) {
-    const vote = await this.chatService.voteOnOption({
-      ...voteOnOptionDto,
+    const vote = await this.chatService.voteForPoll({
+      ...voteForPollDto,
       userId: client.data.user.sub,
     });
 
     emitToRoom({
       client,
       server: this.server,
-      chatId: voteOnOptionDto.chatId,
+      chatId: voteForPollDto.chatId,
       socket: 'poll:receive:vote',
       payload: vote,
     });

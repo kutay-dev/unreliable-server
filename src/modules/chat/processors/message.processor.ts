@@ -4,15 +4,8 @@ import type { Job } from 'bullmq';
 import { ChatService } from '../chat.service';
 import { ChatGateway } from '../chat.gateway';
 import { S3Service } from '@/core/aws/s3/s3.service';
-import { SendMessageType } from '@/common/enums';
 import { LoggerService } from '@/core/logger/logger.service';
-
-type ScheduledMessageJob = {
-  chatId: string;
-  authorId: string;
-  text?: string;
-  uniqueFileName?: string | null;
-};
+import { SendMessageDto } from '../dto';
 
 @Processor('scheduled-messages')
 @Injectable()
@@ -27,7 +20,7 @@ export class MessageProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<ScheduledMessageJob>) {
+  async process(job: Job<SendMessageDto & { authorId: string }>) {
     const started = Date.now();
     this.logger.log(`Processing scheduled-messages:send-message id=${job.id}`);
     try {
@@ -44,7 +37,6 @@ export class MessageProcessor extends WorkerHost {
         : null;
 
       this.chatGateway.server.to(`chat:${chatId}`).emit('message:receive', {
-        type: SendMessageType.POST,
         authorId,
         text,
         imageUrl,
