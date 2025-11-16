@@ -96,6 +96,11 @@ export class ChatService {
     const getMessagesQuery: Prisma.MessageFindManyArgs = {
       where: { chatId, deletedAt: null },
       include: {
+        author: {
+          select: {
+            username: true,
+          },
+        },
         poll: {
           select: {
             id: true,
@@ -208,6 +213,7 @@ export class ChatService {
         text,
         imageUrl: uniqueFileName,
       },
+      include: { author: { select: { username: true } } },
     });
 
     await this.chatCacheService.addMessage(chatId, noNulls(message));
