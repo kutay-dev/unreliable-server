@@ -198,8 +198,15 @@ export class ChatService {
         text: { contains: query, mode: 'insensitive' },
         deletedAt: null,
       },
+      include: {
+        author: {
+          select: {
+            username: true,
+          },
+        },
+      },
       take: 20,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
     });
   }
 
