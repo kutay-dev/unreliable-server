@@ -29,10 +29,11 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   role      Role     @default(USER) @map("role")
 
-  messages  Message[]
-  members   ChatMember[]
-  AIMessage AIMessage[]
-  pollVotes PollVote[]
+  messages   Message[]
+  members    ChatMember[]
+  AIMessage  AIMessage[]
+  pollVotes  PollVote[]
+  readStatus ReadStatus[]
 
   @@index([username], map: "idx_users_username")
   @@map("users")
@@ -44,8 +45,9 @@ model Chat {
   password String?  @map("password") @db.VarChar(255)
   type     ChatType @default(PRIVATE) @map("type")
 
-  messages Message[]
-  members  ChatMember[]
+  messages   Message[]
+  members    ChatMember[]
+  readStatus ReadStatus[]
 
   @@map("chats")
 }
@@ -81,6 +83,21 @@ model Message {
   @@index([authorId])
   @@index([text(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_messages_content_trgm")
   @@map("messages")
+}
+
+model ReadStatus {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  chatId            String   @map("chat_id") @db.Uuid
+  lastSeenMessageId String   @map("last_seen_message_id")
+  updatedAt         DateTime @default(now()) @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chatId])
+  @@index([chatId])
+  @@map("read_status")
 }
 
 model AIMessage {
@@ -127,7 +144,7 @@ model PollVote {
   voter      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   pollOption PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
 
-  @@index([optionId])
   @@unique([userId, optionId])
+  @@index([optionId])
   @@map("poll_votes")
 }

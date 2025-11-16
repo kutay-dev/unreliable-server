@@ -6,6 +6,7 @@ export * from './message/generate-message.dto';
 export * from './message/send-ai-message.dto';
 export * from './message/schedule-message.dto';
 export * from './message/search-message.dto';
+export * from './message/read-message.dto';
 
 export * from './create-chat.dto';
 export * from './chat-connection.dto';

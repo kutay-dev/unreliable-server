@@ -15,6 +15,7 @@ import {
   DeleteMessageDto,
   UpdateMessageDto,
   VoteForPollDto,
+  ReadMessageDto,
 } from './dto';
 import { ParseJSONPipe } from '@/common/pipes/parse-json.pipe';
 import { JwtService } from '@nestjs/jwt';
@@ -163,6 +164,25 @@ export class ChatGateway implements OnGatewayConnection {
       payload: {
         messageId: deleteMessageDto.messageId,
       },
+    });
+  }
+
+  @SubscribeMessage('message:read')
+  async readMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody(ParseJSONPipe) readMessageDto: ReadMessageDto,
+  ) {
+    const seenMessage = await this.chatService.readMessage({
+      ...readMessageDto,
+      userId: client.data.user.sub,
+    });
+
+    emitToRoom({
+      client,
+      server: this.server,
+      chatId: readMessageDto.chatId,
+      socket: 'message:seen',
+      payload: seenMessage,
     });
   }
 

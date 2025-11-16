@@ -13,6 +13,7 @@ import type { User } from '@prisma/client';
 import { ChatAuthGuard } from './guards';
 import { JwtGuard } from '@/common/guards/jwt.guard';
 import {
+  ChatConnectionDto,
   CreateChatDto,
   GenerateMessageDto,
   GetMessagesDto,
@@ -51,6 +52,11 @@ export class ChatController {
   @Get('get-messages')
   async getMessages(@Query() getMessagesDto: GetMessagesDto) {
     return this.chatService.getMessages(getMessagesDto);
+  }
+
+  @Get('get-read-status')
+  async getReadStatus(@Query() chatConnectionDto: ChatConnectionDto) {
+    return this.chatService.getReadStatus(chatConnectionDto);
   }
 
   @Get('search-message')

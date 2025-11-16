@@ -8,6 +8,8 @@ import {
   GetMessagesDto,
   SearchMessageDto,
   VoteForPollDto,
+  ChatConnectionDto,
+  ReadMessageDto,
 } from './dto';
 import { S3Service } from '@/core/aws/s3/s3.service';
 import { AIMessageRole, Message, Prisma } from '@prisma/client';
@@ -165,6 +167,23 @@ export class ChatService {
     return { data, fromCache };
   }
 
+  async getReadStatus(chatConnectionDto: ChatConnectionDto) {
+    return await this.prisma.readStatus.findMany({
+      where: { chatId: chatConnectionDto.chatId },
+      select: {
+        id: true,
+        lastSeenMessageId: true,
+        updatedAt: true,
+        user: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    });
+  }
+
   async searchMessage(searchMessageDto: SearchMessageDto) {
     const { chatId, query } = searchMessageDto;
 
@@ -220,6 +239,16 @@ export class ChatService {
     );
 
     return deletedMessage;
+  }
+
+  async readMessage(readMessageDto: ReadMessageDto & { userId: string }) {
+    const { chatId, lastSeenMessageId, userId } = readMessageDto;
+
+    return await this.prisma.readStatus.upsert({
+      where: { userId_chatId: { userId, chatId } },
+      create: { userId, chatId, lastSeenMessageId },
+      update: { lastSeenMessageId, updatedAt: new Date() },
+    });
   }
 
   async generateIncrementingMessages(generateMessageDto: GenerateMessageDto) {
