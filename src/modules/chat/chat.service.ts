@@ -303,7 +303,7 @@ export class ChatService {
   async createPoll(createPollDto: CreatePollDto & { userId: string }) {
     const { title, chatId, userId, options } = createPollDto;
 
-    return await this.prisma.poll.create({
+    const poll = await this.prisma.poll.create({
       data: {
         title,
         message: {
@@ -320,14 +320,39 @@ export class ChatService {
       },
       include: {
         message: true,
-        options: true,
+        options: {
+          select: {
+            id: true,
+            text: true,
+            votes: {
+              select: {
+                userId: true,
+              },
+            },
+          },
+        },
       },
     });
+
+    const messageWithPoll = {
+      ...poll.message,
+      poll: {
+        id: poll.id,
+        title: poll.title,
+        options: poll.options,
+      },
+    };
+
+    await this.chatCacheService.addMessage(chatId, noNulls(messageWithPoll));
+    return poll;
   }
 
   async voteForPoll(voteForPollDto: VoteForPollDto & { userId: string }) {
     const { userId, optionId } = voteForPollDto;
 
+    await this.redisService.del(
+      `chat:${voteForPollDto.chatId}:messages:last50`,
+    );
     return await this.prisma.pollVote.create({
       data: {
         userId,

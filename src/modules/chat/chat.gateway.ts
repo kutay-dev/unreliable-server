@@ -112,24 +112,16 @@ export class ChatGateway implements OnGatewayConnection {
       ? await this.s3Service.presignDownloadUrl(uniqueFileName)
       : null;
 
-    await this.chatService.sendMessage({
+    const message = await this.chatService.sendMessage({
       chatId,
       authorId,
       text,
       uniqueFileName,
     });
 
-    emitToRoom({
-      client,
-      server: this.server,
-      chatId,
-      socket: 'message:sent',
-      payload: {
-        authorId,
-        text,
-        imageUrl,
-      },
-    });
+    this.server
+      .to(this.chatName(chatId))
+      .emit('message:sent', { ...message, imageUrl });
   }
 
   @SubscribeMessage('message:update')

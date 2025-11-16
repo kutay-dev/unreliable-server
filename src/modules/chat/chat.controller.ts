@@ -77,15 +77,17 @@ export class ChatController {
     @Body() scheduleMessageDto: ScheduleMessageDto,
     @CurrentUser() user: User,
   ) {
+    const { chatId, text, uniqueFileName, schedule } = scheduleMessageDto;
     return await this.bullmqService.schedule(
       'scheduled-messages',
       'send-message',
       {
-        chatId: scheduleMessageDto.chatId,
+        chatId,
         authorId: user.id,
-        text: scheduleMessageDto.text,
+        text,
+        uniqueFileName,
       },
-      new Date(Date.parse(scheduleMessageDto.schedule) - 10),
+      new Date(Date.parse(schedule) - 10),
     );
   }
 

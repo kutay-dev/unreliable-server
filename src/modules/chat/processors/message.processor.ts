@@ -25,22 +25,20 @@ export class MessageProcessor extends WorkerHost {
     this.logger.log(`Processing scheduled-messages:send-message id=${job.id}`);
     try {
       const { chatId, authorId, text, uniqueFileName } = job.data;
-      const msg = await this.chatService.sendMessage({
+      const message = await this.chatService.sendMessage({
         chatId,
         authorId,
         text,
         uniqueFileName: uniqueFileName ?? undefined,
       });
 
-      const imageUrl = msg.imageUrl
-        ? await this.s3Service.presignDownloadUrl(msg.imageUrl)
+      const imageUrl = message.imageUrl
+        ? await this.s3Service.presignDownloadUrl(message.imageUrl)
         : null;
 
-      this.chatGateway.server.to(`chat:${chatId}`).emit('message:receive', {
-        authorId,
-        text,
-        imageUrl,
-      });
+      this.chatGateway.server
+        .to(`chat:${chatId}`)
+        .emit('message:sent', { ...message, imageUrl });
       this.logger.log(
         `Process completed id=${job.id} in ${Date.now() - started}ms`,
       );
