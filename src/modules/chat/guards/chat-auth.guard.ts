@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '@/core/prisma/prisma.service';
-import { ChatType } from '@prisma/client';
+import { ChatType } from 'generated/prisma/client';
 import { ChatService } from '../chat.service';
 
 @Injectable()

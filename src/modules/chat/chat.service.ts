@@ -12,7 +12,7 @@ import {
   ReadMessageDto,
 } from './dto';
 import { S3Service } from '@/core/aws/s3/s3.service';
-import { AIMessageRole, Message, Prisma } from '@prisma/client';
+import { AIMessageRole, Message, Prisma } from 'generated/prisma/client';
 import OpenAI from 'openai';
 import { getRandomSentence, noNulls } from '@/common/utils/common.utils';
 import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';

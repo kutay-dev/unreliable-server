@@ -1,4 +1,4 @@
-import { ChatType } from '@prisma/client';
+import { ChatType } from 'generated/prisma/client';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 

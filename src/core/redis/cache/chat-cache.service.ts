@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Message } from '@prisma/client';
+import { Message } from 'generated/prisma/client';
 import { RedisService } from '../redis.service';
 import { Redis } from 'ioredis';
 

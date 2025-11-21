@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
-import type { User } from '@prisma/client';
+import type { User } from 'generated/prisma/client';
 import { ChatAuthGuard } from './guards';
 import { JwtGuard } from '@/common/guards/jwt.guard';
 import {
