@@ -192,22 +192,19 @@ export class ChatService {
   async searchMessage(searchMessageDto: SearchMessageDto) {
     const { chatId, query } = searchMessageDto;
 
-    return await this.prisma.message.findMany({
-      where: {
-        chatId,
-        text: { contains: query, mode: 'insensitive' },
-        deletedAt: null,
-      },
-      include: {
-        author: {
-          select: {
-            username: true,
-          },
-        },
-      },
-      take: 20,
-      orderBy: { createdAt: 'asc' },
-    });
+    return await this.prisma.$queryRaw`
+      SELECT m.*,
+        json_build_object(
+          'username', u.username
+        ) AS author
+      FROM messages AS m
+      LEFT JOIN users AS u ON u.id = m.author_id
+      WHERE m.chat_id = ${chatId}::uuid
+        AND m.text ILIKE '%' || ${query} || '%'
+        AND m.deleted_at IS NULL
+      ORDER BY m.created_at ASC
+      LIMIT 20
+    `;
   }
 
   async sendMessage(sendMessageDto: SendMessageDto & { authorId: string }) {
