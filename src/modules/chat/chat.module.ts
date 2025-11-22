@@ -1,8 +1,8 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ChatController } from './chat.controller';
-import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
-import { BullModule } from '@nestjs/bullmq';
+import { ChatService } from './chat.service';
 import { MessageProcessor } from './processors/message.processor';
 
 @Module({

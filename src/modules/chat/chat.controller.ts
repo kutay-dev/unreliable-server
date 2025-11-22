@@ -1,3 +1,9 @@
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { Roles } from '@/common/decorators/roles.decorator';
+import { Role } from '@/common/enums';
+import { JwtGuard } from '@/common/guards/jwt.guard';
+import { S3Service } from '@/core/aws/s3/s3.service';
+import { BullmqService } from '@/core/bullmq/bullmq.service';
 import {
   Body,
   Controller,
@@ -7,11 +13,16 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Job } from 'bullmq';
+import type {
+  AIMessage,
+  Chat,
+  ChatType,
+  Message,
+  User,
+} from 'generated/prisma/client';
+import { BatchPayload } from 'generated/prisma/internal/prismaNamespace';
 import { ChatService } from './chat.service';
-import { CurrentUser } from '@/common/decorators/current-user.decorator';
-import type { User } from 'generated/prisma/client';
-import { ChatAuthGuard } from './guards';
-import { JwtGuard } from '@/common/guards/jwt.guard';
 import {
   ChatConnectionDto,
   CreateChatDto,
@@ -20,10 +31,7 @@ import {
   ScheduleMessageDto,
   SendAIMessageDto,
 } from './dto';
-import { S3Service } from '@/core/aws/s3/s3.service';
-import { Roles } from '@/common/decorators/roles.decorator';
-import { Role } from '@/common/enums';
-import { BullmqService } from '@/core/bullmq/bullmq.service';
+import { ChatAuthGuard } from './guards';
 
 @UseGuards(JwtGuard)
 @Controller('chat')
@@ -35,7 +43,9 @@ export class ChatController {
   ) {}
 
   @Get('list')
-  listChats(@CurrentUser() user: User) {
+  listChats(
+    @CurrentUser() user: User,
+  ): Promise<{ id: string; name: string; type: ChatType }[]> {
     return this.chatService.listChats(user.id);
   }
 
@@ -63,7 +73,7 @@ export class ChatController {
   async searchMessage(
     @Query('chatId') chatId: string,
     @Query('query') query: string,
-  ) {
+  ): Promise<Message[]> {
     return this.chatService.searchMessage({ chatId, query });
   }
 
@@ -71,7 +81,7 @@ export class ChatController {
   async sendAIMessage(
     @Body() sendAIMessageDto: SendAIMessageDto,
     @CurrentUser() user: User,
-  ) {
+  ): Promise<AIMessage> {
     return await this.chatService.sendAIMessage(
       sendAIMessageDto.content,
       user.id,
@@ -82,7 +92,9 @@ export class ChatController {
   async scheduleMessage(
     @Body() scheduleMessageDto: ScheduleMessageDto,
     @CurrentUser() user: User,
-  ) {
+  ): Promise<
+    Job<Message, { chatId: string; authorId: string; text: string }, string>
+  > {
     const { chatId, text, uniqueFileName, schedule } = scheduleMessageDto;
     return await this.bullmqService.schedule(
       'scheduled-messages',
@@ -98,27 +110,34 @@ export class ChatController {
   }
 
   @Post('create')
-  createChat(@Body() createChatDto: CreateChatDto) {
-    return this.chatService.createChat(createChatDto);
+  async createChat(@Body() createChatDto: CreateChatDto): Promise<Chat> {
+    return await this.chatService.createChat(createChatDto);
   }
 
   @Get('get-upload-url')
   async getUploadUrl(
     @Query('fileName') fileName: string,
     @Query('fileType') fileType: string,
-  ) {
+  ): Promise<{
+    uniqueFileName: string;
+    uploadUrl: string;
+  }> {
     return await this.s3Service.presignUploadUrl(fileName, fileType);
   }
 
   @Roles(Role.GOD)
-  @Post('generate-incrementing')
-  generateIncrementingMessages(@Body() generateMessageDto: GenerateMessageDto) {
+  @Post('generate-incrementing-messages')
+  generateIncrementingMessages(
+    @Body() generateMessageDto: GenerateMessageDto,
+  ): Promise<Message[]> {
     return this.chatService.generateIncrementingMessages(generateMessageDto);
   }
 
   @Roles(Role.GOD)
-  @Post('generate-sentence')
-  generateSentences(@Body() generateMessageDto: GenerateMessageDto) {
+  @Post('generate-sentences')
+  generateSentences(
+    @Body() generateMessageDto: GenerateMessageDto,
+  ): Promise<BatchPayload> {
     return this.chatService.generateSentences(generateMessageDto);
   }
 }

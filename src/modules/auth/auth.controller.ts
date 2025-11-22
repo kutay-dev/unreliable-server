@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { UserCredentialsDto, NewPasswordsDto } from './dto';
-import { JwtGuard } from '@/common/guards/jwt.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { JwtGuard } from '@/common/guards/jwt.guard';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import type { User } from 'generated/prisma/client';
+import { AuthService } from './auth.service';
+import { NewPasswordsDto, UserCredentialsDto } from './dto';
 
 @Controller('auth')
 export class AuthController {
@@ -11,17 +11,21 @@ export class AuthController {
 
   @UseGuards(JwtGuard)
   @Get('protected/check')
-  getUser() {
+  getUser(): true {
     return true;
   }
 
   @Post('login')
-  async login(@Body() credentials: UserCredentialsDto) {
+  async login(@Body() credentials: UserCredentialsDto): Promise<{
+    access_token: string;
+  }> {
     return await this.authService.login(credentials);
   }
 
   @Post('signup')
-  async signup(@Body() credentials: UserCredentialsDto) {
+  async signup(@Body() credentials: UserCredentialsDto): Promise<{
+    access_token: string;
+  }> {
     return await this.authService.signup(credentials);
   }
 
@@ -30,7 +34,7 @@ export class AuthController {
   async changePassword(
     @Body() passwords: NewPasswordsDto,
     @CurrentUser() user: User,
-  ) {
+  ): Promise<{ id: string; username: string }> {
     return await this.authService.changePassword(passwords, user);
   }
 }

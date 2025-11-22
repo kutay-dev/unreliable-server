@@ -20,7 +20,9 @@ export class MessageProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<SendMessageDto & { authorId: string }>) {
+  async process(
+    job: Job<SendMessageDto & { authorId: string }>,
+  ): Promise<void> {
     const started = Date.now();
     this.logger.log(`Processing scheduled-messages:send-message id=${job.id}`);
     try {

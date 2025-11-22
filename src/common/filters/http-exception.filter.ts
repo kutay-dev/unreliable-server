@@ -1,13 +1,13 @@
+import { IErrorResponse } from '@/common/types';
+import { LoggerService } from '@/core/logger/logger.service';
 import {
-  ExceptionFilter,
-  Catch,
   ArgumentsHost,
+  Catch,
+  ExceptionFilter,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { IErrorResponse } from '@/common/types';
-import { LoggerService } from '@/core/logger/logger.service';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -15,7 +15,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     this.logger.setModuleName(HttpExceptionFilter.name);
   }
 
-  catch(exception: unknown, host: ArgumentsHost) {
+  catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse<Response>();
     const req = ctx.getRequest<Request>();

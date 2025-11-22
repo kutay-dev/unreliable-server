@@ -1,7 +1,7 @@
 import {
-  registerDecorator,
-  ValidationOptions,
   ValidationArguments,
+  ValidationOptions,
+  registerDecorator,
 } from 'class-validator';
 
 export const IsULID = (validationOptions?: ValidationOptions) => {
@@ -12,14 +12,14 @@ export const IsULID = (validationOptions?: ValidationOptions) => {
       propertyName: propertyName,
       options: validationOptions,
       validator: {
-        validate(value: string) {
+        validate(value: string): boolean {
           // ULID regex: 26 chars, Crockford's Base32
           return (
             typeof value === 'string' &&
             /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(value)
           );
         },
-        defaultMessage(args: ValidationArguments) {
+        defaultMessage(args: ValidationArguments): string {
           return `${args.property} must be a valid ULID`;
         },
       },

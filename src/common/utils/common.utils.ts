@@ -2,7 +2,7 @@ import { WORDS } from '../constants/words';
 import { Environment } from '../enums';
 import { IEmitToRoomProps } from '../types';
 
-export const generateRandomComplexString = (length: number) => {
+export const generateRandomComplexString = (length: number): string => {
   const chars =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?$@+*&';
   let complexString = '';
@@ -12,7 +12,7 @@ export const generateRandomComplexString = (length: number) => {
   return complexString;
 };
 
-export const getRandomSentence = () => {
+export const getRandomSentence = (): string => {
   return Array.from({ length: Math.floor(Math.random() * 10) + 2 })
     .map(() => WORDS[Math.floor(Math.random() * WORDS.length)])
     .join(' ');
@@ -24,7 +24,7 @@ export const noNulls = <T extends object>(obj: T): T => {
   ) as T;
 };
 
-export const emitToRoom = (emitProps: IEmitToRoomProps) => {
+export const emitToRoom = (emitProps: IEmitToRoomProps): void => {
   if (process.env.NODE_ENV === Environment.PROD) {
     emitProps.client.broadcast
       .to(`chat:${emitProps.chatId}`)

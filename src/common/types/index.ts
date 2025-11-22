@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
-import { FromCache } from '../enums';
 import { Server, Socket } from 'socket.io';
+import { FromCache } from '../enums';
 
 export type JwtPayload = {
   sub: string;

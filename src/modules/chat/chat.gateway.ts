@@ -1,3 +1,10 @@
+import { ParseJSONPipe } from '@/common/pipes/parse-json.pipe';
+import { emitToRoom } from '@/common/utils/common.utils';
+import { S3Service } from '@/core/aws/s3/s3.service';
+import { LoggerService } from '@/core/logger/logger.service';
+import { RedisService } from '@/core/redis/redis.service';
+import { UsePipes, ValidationPipe } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import {
   ConnectedSocket,
   MessageBody,
@@ -10,20 +17,13 @@ import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import {
   ChatConnectionDto,
-  SendMessageDto,
   CreatePollDto,
   DeleteMessageDto,
+  ReadMessageDto,
+  SendMessageDto,
   UpdateMessageDto,
   VoteForPollDto,
-  ReadMessageDto,
 } from './dto';
-import { ParseJSONPipe } from '@/common/pipes/parse-json.pipe';
-import { JwtService } from '@nestjs/jwt';
-import { S3Service } from '@/core/aws/s3/s3.service';
-import { LoggerService } from '@/core/logger/logger.service';
-import { RedisService } from '@/core/redis/redis.service';
-import { UsePipes, ValidationPipe } from '@nestjs/common';
-import { emitToRoom } from '@/common/utils/common.utils';
 
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 @WebSocketGateway({ cors: true, namespace: 'chat' })
@@ -38,7 +38,7 @@ export class ChatGateway implements OnGatewayConnection {
     this.logger.setModuleName(ChatGateway.name);
   }
 
-  handleConnection(client: Socket) {
+  handleConnection(client: Socket): void {
     try {
       const token: string =
         client.handshake.auth?.token ??
@@ -59,7 +59,7 @@ export class ChatGateway implements OnGatewayConnection {
   async ping(
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) chatConnectionDto: ChatConnectionDto,
-  ) {
+  ): Promise<void> {
     const userId = client.data.user.sub;
     await this.redisService.set(`user:${userId}:online`, true, 30);
 
@@ -76,7 +76,7 @@ export class ChatGateway implements OnGatewayConnection {
   async joinChat(
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) joinChatDto: ChatConnectionDto,
-  ) {
+  ): Promise<void> {
     const chatName = this.chatName(joinChatDto.chatId);
     await client.join(chatName);
 
@@ -97,7 +97,7 @@ export class ChatGateway implements OnGatewayConnection {
   async leaveChat(
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) leaveChatDto: ChatConnectionDto,
-  ) {
+  ): Promise<void> {
     await client.leave(this.chatName(leaveChatDto.chatId));
     client.emit('chat:leave', { chatId: leaveChatDto.chatId });
   }
@@ -106,7 +106,7 @@ export class ChatGateway implements OnGatewayConnection {
   async sendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) sendMessageDto: SendMessageDto,
-  ) {
+  ): Promise<void> {
     const { chatId, text, uniqueFileName } = sendMessageDto;
     const authorId = client.data.user.sub;
     const imageUrl = uniqueFileName
@@ -129,7 +129,7 @@ export class ChatGateway implements OnGatewayConnection {
   async updateMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) updateMessageDto: UpdateMessageDto,
-  ) {
+  ): Promise<void> {
     const message = await this.chatService.editMessage(
       updateMessageDto.messageId,
       updateMessageDto.text,
@@ -151,7 +151,7 @@ export class ChatGateway implements OnGatewayConnection {
   async deleteMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) deleteMessageDto: DeleteMessageDto,
-  ) {
+  ): Promise<void> {
     const message = await this.chatService.deleteMessage(
       deleteMessageDto.messageId,
     );
@@ -171,7 +171,7 @@ export class ChatGateway implements OnGatewayConnection {
   async readMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) readMessageDto: ReadMessageDto,
-  ) {
+  ): Promise<void> {
     const seenMessage = await this.chatService.readMessage({
       ...readMessageDto,
       userId: client.data.user.sub,
@@ -190,7 +190,7 @@ export class ChatGateway implements OnGatewayConnection {
   async createPoll(
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) createPollDto: CreatePollDto,
-  ) {
+  ): Promise<void> {
     const poll = await this.chatService.createPoll({
       ...createPollDto,
       userId: client.data.user.sub,
@@ -209,7 +209,7 @@ export class ChatGateway implements OnGatewayConnection {
   async voteForPoll(
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) voteForPollDto: VoteForPollDto,
-  ) {
+  ): Promise<void> {
     const vote = await this.chatService.voteForPoll({
       ...voteForPollDto,
       userId: client.data.user.sub,

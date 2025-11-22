@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger as WinstonLogger } from 'winston';
 
@@ -10,7 +10,7 @@ export class LoggerService {
 
   private moduleName?: string;
 
-  setModuleName(moduleName: string) {
+  setModuleName(moduleName: string): void {
     this.moduleName = moduleName;
   }
 

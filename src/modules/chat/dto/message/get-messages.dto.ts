@@ -1,7 +1,7 @@
 import { IsULID } from '@/common/decorators/is-ulid.decorator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsOptional, IsInt, Min, IsUUID, Max } from 'class-validator';
+import { IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
 
 export class GetMessagesDto {
   @ApiProperty({ example: '686fd61d-6090-487a-97cb-b9255e88682b' })

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Message } from 'generated/prisma/client';
-import { RedisService } from '../redis.service';
 import { Redis } from 'ioredis';
+import { RedisService } from '../redis.service';
 
 @Injectable()
 export class ChatCacheService {
@@ -11,7 +11,7 @@ export class ChatCacheService {
     this.redisClient = this.redisService.getClient();
   }
 
-  async addMessage(chatId: string, message: Message) {
+  async addMessage(chatId: string, message: Message): Promise<void> {
     const key = `chat:${chatId}:messages:last50`;
     await this.redisClient
       .multi()

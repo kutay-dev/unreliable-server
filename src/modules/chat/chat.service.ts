@@ -1,24 +1,36 @@
-import { Injectable } from '@nestjs/common';
+import { FromCache } from '@/common/enums';
+import { getRandomSentence, noNulls } from '@/common/utils/common.utils';
+import { S3Service } from '@/core/aws/s3/s3.service';
 import { PrismaService } from '@/core/prisma/prisma.service';
+import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';
+import { RedisService } from '@/core/redis/redis.service';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
+  AIMessage,
+  AIMessageRole,
+  Chat,
+  ChatMember,
+  ChatType,
+  Message,
+  Poll,
+  PollVote,
+  Prisma,
+  ReadStatus,
+} from 'generated/prisma/client';
+import { BatchPayload } from 'generated/prisma/internal/prismaNamespace';
+import OpenAI from 'openai';
+import {
+  ChatConnectionDto,
   CreateChatDto,
-  SendMessageDto,
   CreatePollDto,
   GenerateMessageDto,
   GetMessagesDto,
-  SearchMessageDto,
-  VoteForPollDto,
-  ChatConnectionDto,
   ReadMessageDto,
+  SearchMessageDto,
+  SendMessageDto,
+  VoteForPollDto,
 } from './dto';
-import { S3Service } from '@/core/aws/s3/s3.service';
-import { AIMessageRole, Message, Prisma } from 'generated/prisma/client';
-import OpenAI from 'openai';
-import { getRandomSentence, noNulls } from '@/common/utils/common.utils';
-import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';
-import { ConfigService } from '@nestjs/config';
-import { RedisService } from '@/core/redis/redis.service';
-import { FromCache } from '@/common/enums';
 
 @Injectable()
 export class ChatService {
@@ -36,7 +48,7 @@ export class ChatService {
     });
   }
 
-  async createChat(createChatDto: CreateChatDto) {
+  async createChat(createChatDto: CreateChatDto): Promise<Chat> {
     const { name, type, password } = createChatDto;
 
     return await this.prisma.chat.create({
@@ -48,7 +60,7 @@ export class ChatService {
     });
   }
 
-  async validateChatMember(userId: string, chatId: string) {
+  async validateChatMember(userId: string, chatId: string): Promise<boolean> {
     const member = await this.prisma.chatMember.findUnique({
       where: { userId_chatId: { userId, chatId } },
       select: { id: true },
@@ -56,7 +68,7 @@ export class ChatService {
     return !!member;
   }
 
-  async insertMember(userId: string, chatId: string) {
+  async insertMember(userId: string, chatId: string): Promise<ChatMember> {
     return await this.prisma.chatMember.upsert({
       where: { userId_chatId: { userId, chatId } },
       create: { userId, chatId },
@@ -64,7 +76,9 @@ export class ChatService {
     });
   }
 
-  async listChats(userId: string) {
+  async listChats(
+    userId: string,
+  ): Promise<{ id: string; name: string; type: ChatType }[]> {
     return await this.prisma.chat.findMany({
       where: {
         OR: [
@@ -87,7 +101,9 @@ export class ChatService {
     });
   }
 
-  async getMessages(getMessagesDto: GetMessagesDto) {
+  async getMessages(
+    getMessagesDto: GetMessagesDto,
+  ): Promise<{ data: Message[]; fromCache: FromCache }> {
     const { chatId, cursor, limit } = getMessagesDto;
 
     let messages: Message[];
@@ -172,7 +188,14 @@ export class ChatService {
     return { data, fromCache };
   }
 
-  async getReadStatus(chatConnectionDto: ChatConnectionDto) {
+  async getReadStatus(chatConnectionDto: ChatConnectionDto): Promise<
+    {
+      id: string;
+      lastSeenMessageId: string;
+      updatedAt: Date;
+      user: { id: string; username: string };
+    }[]
+  > {
     return await this.prisma.readStatus.findMany({
       where: { chatId: chatConnectionDto.chatId },
       select: {
@@ -189,7 +212,7 @@ export class ChatService {
     });
   }
 
-  async searchMessage(searchMessageDto: SearchMessageDto) {
+  async searchMessage(searchMessageDto: SearchMessageDto): Promise<Message[]> {
     const { chatId, query } = searchMessageDto;
 
     return await this.prisma.$queryRaw`
@@ -207,7 +230,9 @@ export class ChatService {
     `;
   }
 
-  async sendMessage(sendMessageDto: SendMessageDto & { authorId: string }) {
+  async sendMessage(
+    sendMessageDto: SendMessageDto & { authorId: string },
+  ): Promise<Message> {
     const { authorId, chatId, text, uniqueFileName } = sendMessageDto;
 
     const message = await this.prisma.message.create({
@@ -224,7 +249,7 @@ export class ChatService {
     return message;
   }
 
-  async editMessage(id: string, text: string) {
+  async editMessage(id: string, text: string): Promise<Message> {
     const editedMessage = await this.prisma.message.update({
       where: { id },
       data: {
@@ -236,7 +261,7 @@ export class ChatService {
     return editedMessage;
   }
 
-  async deleteMessage(id: string) {
+  async deleteMessage(id: string): Promise<Message> {
     const deletedMessage = await this.prisma.message.update({
       where: { id },
       data: {
@@ -251,7 +276,9 @@ export class ChatService {
     return deletedMessage;
   }
 
-  async readMessage(readMessageDto: ReadMessageDto & { userId: string }) {
+  async readMessage(
+    readMessageDto: ReadMessageDto & { userId: string },
+  ): Promise<ReadStatus> {
     const { chatId, lastSeenMessageId, userId } = readMessageDto;
 
     return await this.prisma.readStatus.upsert({
@@ -261,7 +288,9 @@ export class ChatService {
     });
   }
 
-  async generateIncrementingMessages(generateMessageDto: GenerateMessageDto) {
+  async generateIncrementingMessages(
+    generateMessageDto: GenerateMessageDto,
+  ): Promise<Message[]> {
     const { count, authorId, chatId } = generateMessageDto;
 
     const generatedMessages: Message[] = [];
@@ -279,7 +308,9 @@ export class ChatService {
     return generatedMessages;
   }
 
-  async generateSentences(generateMessageDto: GenerateMessageDto) {
+  async generateSentences(
+    generateMessageDto: GenerateMessageDto,
+  ): Promise<BatchPayload> {
     const { count, authorId, chatId } = generateMessageDto;
 
     return await this.prisma.message.createMany({
@@ -291,7 +322,7 @@ export class ChatService {
     });
   }
 
-  async sendAIMessage(content: string, userId: string) {
+  async sendAIMessage(content: string, userId: string): Promise<AIMessage> {
     await this.prisma.aIMessage.create({
       data: {
         role: AIMessageRole.USER,
@@ -339,7 +370,9 @@ export class ChatService {
     });
   }
 
-  async createPoll(createPollDto: CreatePollDto & { userId: string }) {
+  async createPoll(
+    createPollDto: CreatePollDto & { userId: string },
+  ): Promise<Poll> {
     const { title, chatId, userId, options } = createPollDto;
 
     const poll = await this.prisma.poll.create({
@@ -386,7 +419,9 @@ export class ChatService {
     return poll;
   }
 
-  async voteForPoll(voteForPollDto: VoteForPollDto & { userId: string }) {
+  async voteForPoll(
+    voteForPollDto: VoteForPollDto & { userId: string },
+  ): Promise<PollVote> {
     const { userId, optionId } = voteForPollDto;
 
     await this.redisService.del(

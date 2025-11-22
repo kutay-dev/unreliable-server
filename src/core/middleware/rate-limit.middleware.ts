@@ -1,12 +1,12 @@
+import { RedisService } from '@/core/redis/redis.service';
 import {
   HttpException,
   HttpStatus,
   Injectable,
   NestMiddleware,
 } from '@nestjs/common';
-import { Request, Response, NextFunction } from 'express';
-import { RedisService } from '@/core/redis/redis.service';
 import { ConfigService } from '@nestjs/config';
+import { NextFunction, Request, Response } from 'express';
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
@@ -15,7 +15,7 @@ export class RateLimitMiddleware implements NestMiddleware {
     private readonly redisService: RedisService,
   ) {}
 
-  async use(req: Request, res: Response, next: NextFunction) {
+  async use(req: Request, res: Response, next: NextFunction): Promise<void> {
     const limit = +this.configService.getOrThrow<string>('RATE_LIMIT');
     const ttl = +this.configService.getOrThrow<string>('RATE_LIMIT_TTL');
 

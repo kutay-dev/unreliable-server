@@ -1,14 +1,14 @@
+import { PrismaService } from '@/core/prisma/prisma.service';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaService } from '@/core/prisma/prisma.service';
-import * as argon from 'argon2';
 import { JwtService } from '@nestjs/jwt';
-import { UserCredentialsDto, NewPasswordsDto } from './dto';
+import * as argon from 'argon2';
 import { User } from 'generated/prisma/client';
+import { NewPasswordsDto, UserCredentialsDto } from './dto';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +17,9 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async login(credentials: UserCredentialsDto) {
+  async login(credentials: UserCredentialsDto): Promise<{
+    access_token: string;
+  }> {
     const user = await this.prisma.user.findUnique({
       where: {
         username: credentials.username,
@@ -36,7 +38,9 @@ export class AuthService {
     return this.signToken(user.id, user.username);
   }
 
-  async signup(credentials: UserCredentialsDto) {
+  async signup(credentials: UserCredentialsDto): Promise<{
+    access_token: string;
+  }> {
     const hash = await argon.hash(credentials.password);
 
     try {
@@ -55,7 +59,10 @@ export class AuthService {
     }
   }
 
-  async changePassword(passwords: NewPasswordsDto, user: User) {
+  async changePassword(
+    passwords: NewPasswordsDto,
+    user: User,
+  ): Promise<{ id: string; username: string }> {
     if (passwords.new !== passwords.newAgain)
       throw new BadRequestException("Passwords don't match");
 
@@ -79,7 +86,12 @@ export class AuthService {
     });
   }
 
-  async signToken(userId: string, username: string) {
+  async signToken(
+    userId: string,
+    username: string,
+  ): Promise<{
+    access_token: string;
+  }> {
     const payload = {
       sub: userId,
       username,

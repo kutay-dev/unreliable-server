@@ -16,7 +16,7 @@ export class ChatAuthGuard implements CanActivate {
     private readonly chatService: ChatService,
   ) {}
 
-  async canActivate(context: ExecutionContext) {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
     const userId: string = req?.user.id;
     const chatId: string = req?.params?.id;

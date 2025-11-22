@@ -1,15 +1,19 @@
-import { PrismaService } from '@/core/prisma/prisma.service';
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { GenerateRandomUserDto, DeleteUsersBulkDto } from './dto';
 import { DB_CHUNK_SIZE } from '@/common/constants/common';
 import { Role } from '@/common/enums';
 import { generateRandomComplexString } from '@/common/utils/common.utils';
+import { PrismaService } from '@/core/prisma/prisma.service';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { User } from 'generated/prisma/client';
+import { BatchPayload } from 'generated/prisma/internal/prismaNamespace';
+import { DeleteUsersBulkDto, GenerateRandomUserDto } from './dto';
 
 @Injectable()
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getUser(username: string) {
+  async getUser(
+    username: string,
+  ): Promise<{ username: string; createdAt: Date }> {
     const user = await this.prisma.user.findUnique({
       where: {
         username,
@@ -27,11 +31,13 @@ export class UserService {
     return user;
   }
 
-  async getAllUsers() {
+  async getAllUsers(): Promise<User[]> {
     return await this.prisma.user.findMany();
   }
 
-  async generateRandomUser(random: GenerateRandomUserDto) {
+  async generateRandomUser(
+    random: GenerateRandomUserDto,
+  ): Promise<BatchPayload> {
     return await this.prisma.user.createMany({
       data: Array.from({ length: random.generations }, () => ({
         username: Math.random().toString(36).substring(2, 12),
@@ -40,7 +46,7 @@ export class UserService {
     });
   }
 
-  async deleteUsersBulk(deleteUsersBulk: DeleteUsersBulkDto) {
+  async deleteUsersBulk(deleteUsersBulk: DeleteUsersBulkDto): Promise<true> {
     const users = await this.prisma.user.findMany({
       select: { id: true },
       where: { role: { not: Role.GOD } },

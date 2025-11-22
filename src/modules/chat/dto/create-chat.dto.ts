@@ -1,6 +1,6 @@
-import { ChatType } from 'generated/prisma/client';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { ChatType } from 'generated/prisma/client';
 
 export class CreateChatDto {
   @ApiProperty({ example: 'Family chat' })

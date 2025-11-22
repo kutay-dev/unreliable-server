@@ -1,4 +1,3 @@
-// src/core/bullmq/bullmq.module.ts
 import { Global, Module } from '@nestjs/common';
 import { BullmqService } from './bullmq.service';
 

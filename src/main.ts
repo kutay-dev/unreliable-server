@@ -1,17 +1,17 @@
+import { Environment } from '@/common/enums';
+import { HttpExceptionFilter } from '@/common/filters';
+import { setupSwagger } from '@/common/swagger';
+import { LoggingInterceptor, ResponseInterceptor } from '@/core/interceptors';
+import { LoggerService } from '@/core/logger/logger.service';
+import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { NestFactory } from '@nestjs/core';
+import { ExpressAdapter } from '@nestjs/platform-express';
 import express from 'express';
 import helmet from 'helmet';
-import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
-import { setupSwagger } from '@/common/swagger';
-import { ConfigService } from '@nestjs/config';
-import { HttpExceptionFilter } from '@/common/filters';
-import { LoggerService } from '@/core/logger/logger.service';
-import { ResponseInterceptor, LoggingInterceptor } from '@/core/interceptors';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import { Environment } from '@/common/enums';
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   const server = express();
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
     cors: {

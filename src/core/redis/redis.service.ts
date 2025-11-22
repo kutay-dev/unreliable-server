@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import Redis from 'ioredis';
 import { LoggerService } from '@/core/logger/logger.service';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import Redis from 'ioredis';
 
 @Injectable()
 export class RedisService {
@@ -37,11 +37,11 @@ export class RedisService {
     });
   }
 
-  getClient() {
+  getClient(): Redis {
     return this.redisClient;
   }
 
-  async set(key: string, value: any, ttlSeconds?: number) {
+  async set(key: string, value: any, ttlSeconds?: number): Promise<'OK'> {
     if (ttlSeconds)
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       return await this.redisClient.set(key, value, 'EX', ttlSeconds);
@@ -49,23 +49,23 @@ export class RedisService {
     return await this.redisClient.set(key, value);
   }
 
-  async get(key: string) {
+  async get(key: string): Promise<string | null> {
     return await this.redisClient.get(key);
   }
 
-  async del(key: string) {
+  async del(key: string): Promise<number> {
     return await this.redisClient.del(key);
   }
 
-  async exists(key: string) {
+  async exists(key: string): Promise<number> {
     return await this.redisClient.exists(key);
   }
 
-  async expire(key: string, ttlSeconds: number) {
+  async expire(key: string, ttlSeconds: number): Promise<number> {
     return await this.redisClient.expire(key, ttlSeconds);
   }
 
-  async incr(key: string) {
+  async incr(key: string): Promise<number> {
     return await this.redisClient.incr(key);
   }
 }

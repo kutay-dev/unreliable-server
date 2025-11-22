@@ -7,7 +7,7 @@ type DocProperties = { title: string; version: string };
 export function setupSwagger(
   docProperties: DocProperties,
   app: INestApplication,
-) {
+): void {
   const config = new DocumentBuilder()
     .setTitle(docProperties.title || 'Documentation')
     .setVersion(docProperties.version || '1.0.0')

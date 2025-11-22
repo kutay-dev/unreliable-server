@@ -1,12 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
 import {
-  HealthCheckService,
-  HealthCheck,
   DiskHealthIndicator,
-  MemoryHealthIndicator,
-  HttpHealthIndicator,
-  HealthIndicatorFunction,
+  HealthCheck,
   HealthCheckResult,
+  HealthCheckService,
+  HealthIndicatorFunction,
+  HttpHealthIndicator,
+  MemoryHealthIndicator,
 } from '@nestjs/terminus';
 import * as os from 'os';
 

@@ -1,3 +1,4 @@
+import { LoggerService } from '@/core/logger/logger.service';
 import {
   CallHandler,
   ExecutionContext,
@@ -5,9 +6,8 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
-import { LoggerService } from '@/core/logger/logger.service';
 
-function shouldLogPath(path?: string) {
+function shouldLogPath(path?: string): boolean {
   if (!path) return true;
   if (path.startsWith('/health')) return false;
   if (path.startsWith('/docs')) return false;

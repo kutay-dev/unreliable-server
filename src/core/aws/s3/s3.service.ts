@@ -1,3 +1,4 @@
+import uuidv4 from '@/common/utils/uuid';
 import {
   GetObjectCommand,
   PutObjectCommand,
@@ -6,7 +7,6 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import uuidv4 from '@/common/utils/uuid';
 
 @Injectable()
 export class S3Service {
@@ -17,7 +17,7 @@ export class S3Service {
     this.initializeClients();
   }
 
-  private initializeClients() {
+  private initializeClients(): void {
     this.s3BucketName = this.configService.getOrThrow('AWS_S3_BUCKET_NAME');
     this.s3Client = new S3Client({
       region: this.configService.getOrThrow('AWS_REGION'),
@@ -28,7 +28,10 @@ export class S3Service {
     });
   }
 
-  async presignUploadUrl(fileName: string, fileType: string) {
+  async presignUploadUrl(
+    fileName: string,
+    fileType: string,
+  ): Promise<{ uniqueFileName: string; uploadUrl: string }> {
     const uniqueFileName = `${uuidv4()}_${fileName}`;
     const command = new PutObjectCommand({
       Bucket: this.s3BucketName,
@@ -46,7 +49,7 @@ export class S3Service {
     };
   }
 
-  async presignDownloadUrl(fileName: string) {
+  async presignDownloadUrl(fileName: string): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: this.s3BucketName,
       Key: fileName,
