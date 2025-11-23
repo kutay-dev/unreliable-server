@@ -5,7 +5,7 @@ export class UserCredentialsDto {
   @ApiProperty({ example: '5ae26726-cd95-4899-9de9-d2ee010110bf' })
   @IsOptional()
   @IsUUID()
-  id: string;
+  id?: string;
 
   @ApiProperty({ example: 'kutay' })
   @IsString()

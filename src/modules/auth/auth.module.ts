@@ -1,4 +1,5 @@
 import { JwtStrategy } from '@/core/jwt/jwt.strategy';
+import { ChatModule } from '@/modules/chat/chat.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
@@ -19,6 +20,7 @@ import { AuthService } from './auth.service';
         },
       }),
     }),
+    ChatModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

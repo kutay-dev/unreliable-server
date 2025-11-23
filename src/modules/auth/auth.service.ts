@@ -1,4 +1,6 @@
+import { Role } from '@/common/enums';
 import { PrismaService } from '@/core/prisma/prisma.service';
+import { ChatService } from '@/modules/chat/chat.service';
 import {
   BadRequestException,
   Injectable,
@@ -7,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon from 'argon2';
-import { User } from 'generated/prisma/client';
+import { ChatType, User } from 'generated/prisma/client';
 import { NewPasswordsDto, UserCredentialsDto } from './dto';
 
 @Injectable()
@@ -15,7 +17,39 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly chatService: ChatService,
   ) {}
+
+  async init() {
+    const { access_token } = await this.signup({
+      username: 'god',
+      password: 'god12345',
+    });
+    const god = await this.prisma.user.findUnique({
+      where: { username: 'god' },
+    });
+    await this.prisma.user.update({
+      where: { id: god!.id },
+      data: { role: Role.GOD },
+    });
+    const paris = await this.chatService.createChat({
+      name: 'Paris',
+      type: ChatType.PUBLIC,
+    });
+    await this.chatService.insertMember(god!.id, paris.id);
+    const data = await this.chatService.sendMessage({
+      chatId: paris.id,
+      authorId: god!.id,
+      text: 'In the beginning God created the heaven and the earth',
+    });
+
+    return {
+      access_token,
+      god_id: data.authorId,
+      paris_id: data.chatId,
+      message_id: data.id,
+    };
+  }
 
   async login(credentials: UserCredentialsDto): Promise<{
     access_token: string;

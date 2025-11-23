@@ -13,5 +13,6 @@ import { MessageProcessor } from './processors/message.processor';
   ],
   controllers: [ChatController],
   providers: [ChatService, ChatGateway, MessageProcessor],
+  exports: [ChatService],
 })
 export class ChatModule {}
