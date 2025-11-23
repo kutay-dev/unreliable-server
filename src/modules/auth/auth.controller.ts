@@ -12,7 +12,12 @@ export class AuthController {
 
   @UseGuards(NoProdGuard)
   @Get('init')
-  async init() {
+  async init(): Promise<{
+    access_token: string;
+    god_id: string;
+    paris_id: string;
+    message_id: string;
+  }> {
     return await this.authService.init();
   }
 

@@ -20,7 +20,12 @@ export class AuthService {
     private readonly chatService: ChatService,
   ) {}
 
-  async init() {
+  async init(): Promise<{
+    access_token: string;
+    god_id: string;
+    paris_id: string;
+    message_id: string;
+  }> {
     const { access_token } = await this.signup({
       username: 'god',
       password: 'god12345',
