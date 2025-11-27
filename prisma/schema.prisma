@@ -1,10 +1,13 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider        = "prisma-client"
+  output          = "../generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+  moduleFormat    = "commonjs"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [pg_trgm, vector]
 }
 
 enum Role {
@@ -67,13 +70,14 @@ model ChatMember {
 }
 
 model Message {
-  id        String    @id @default(ulid())
-  authorId  String    @map("author_id") @db.Uuid
-  chatId    String    @map("chat_id") @db.Uuid
-  text      String?   @map("text") @db.Text
-  imageUrl  String?   @map("image_url")
-  createdAt DateTime  @default(now()) @map("created_at")
-  deletedAt DateTime? @map("deleted_at")
+  id        String                       @id @default(ulid())
+  authorId  String                       @map("author_id") @db.Uuid
+  chatId    String                       @map("chat_id") @db.Uuid
+  text      String?                      @map("text") @db.Text
+  embedding Unsupported("vector(3072)")? @map("embedding")
+  imageUrl  String?                      @map("image_url")
+  createdAt DateTime                     @default(now()) @map("created_at")
+  deletedAt DateTime?                    @map("deleted_at")
 
   poll   Poll?
   author User  @relation(fields: [authorId], references: [id], onDelete: Cascade)

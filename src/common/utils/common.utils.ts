@@ -1,6 +1,11 @@
+import OpenAI from 'openai';
 import { WORDS } from '../constants/words';
 import { Environment } from '../enums';
 import { IEmitToRoomProps } from '../types';
+
+const aiClient = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export const generateRandomComplexString = (length: number): string => {
   const chars =
@@ -25,7 +30,7 @@ export const noNulls = <T extends object>(obj: T): T => {
 };
 
 export const emitToRoom = (emitProps: IEmitToRoomProps): void => {
-  if (process.env.NODE_ENV === Environment.PROD) {
+  if (isProd) {
     emitProps.client.broadcast
       .to(`chat:${emitProps.chatId}`)
       .emit(emitProps.socket, emitProps.payload);
@@ -34,4 +39,18 @@ export const emitToRoom = (emitProps: IEmitToRoomProps): void => {
       .to(`chat:${emitProps.chatId}`)
       .emit(emitProps.socket, emitProps.payload);
   }
+};
+
+export const isProd =
+  (process.env.NODE_ENV as Environment) === Environment.PROD;
+
+export const vectorize = async (data: string): Promise<string> => {
+  const embedding = await aiClient.embeddings.create({
+    model: 'text-embedding-3-large',
+    input: data,
+  });
+  const vector = embedding.data[0].embedding;
+  const norm = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0));
+  const normalizedVector = vector.map((v) => v / norm);
+  return `[${normalizedVector.join(',')}]`;
 };

@@ -29,6 +29,7 @@ import {
   GenerateMessageDto,
   GetMessagesDto,
   ScheduleMessageDto,
+  SearchMessageDto,
   SendAIMessageDto,
 } from './dto';
 import { ChatAuthGuard } from './guards';
@@ -71,10 +72,16 @@ export class ChatController {
 
   @Get('search-message')
   async searchMessage(
-    @Query('chatId') chatId: string,
-    @Query('query') query: string,
+    @Query() searchMessageDto: SearchMessageDto,
   ): Promise<Message[]> {
-    return this.chatService.searchMessage({ chatId, query });
+    return this.chatService.searchMessage(searchMessageDto);
+  }
+
+  @Get('ai-search-message')
+  async aiSearchMessage(
+    @Query() searchMessageDto: SearchMessageDto,
+  ): Promise<Message[]> {
+    return this.chatService.aiSearchMessage(searchMessageDto);
   }
 
   @Post('send-ai-message')

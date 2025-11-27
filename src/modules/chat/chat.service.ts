@@ -1,5 +1,9 @@
 import { FromCache } from '@/common/enums';
-import { getRandomSentence, noNulls } from '@/common/utils/common.utils';
+import {
+  getRandomSentence,
+  noNulls,
+  vectorize,
+} from '@/common/utils/common.utils';
 import { S3Service } from '@/core/aws/s3/s3.service';
 import { PrismaService } from '@/core/prisma/prisma.service';
 import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';
@@ -216,17 +220,59 @@ export class ChatService {
     const { chatId, query } = searchMessageDto;
 
     return await this.prisma.$queryRaw`
-      SELECT m.*,
+      SELECT m.id, m.author_id, m.text, m.image_url, m.created_at,
         json_build_object(
           'username', u.username
         ) AS author
       FROM messages AS m
       LEFT JOIN users AS u ON u.id = m.author_id
       WHERE m.chat_id = ${chatId}::uuid
-        AND m.text ILIKE '%' || ${query} || '%'
         AND m.deleted_at IS NULL
+        AND m.text ILIKE '%' || ${query} || '%'
       ORDER BY m.created_at ASC
       LIMIT 20
+    `;
+  }
+
+  async aiSearchMessage(
+    searchMessageDto: SearchMessageDto,
+  ): Promise<Message[]> {
+    const optimizedQueryRaw = await this.aiClient.chat.completions.create({
+      model: this.configService.getOrThrow<string>(
+        'OPENAI_SEARCH_QUERY_OPTIMIZER_MODEL',
+      ),
+      messages: [
+        {
+          role: 'system',
+          content: this.configService.getOrThrow<string>(
+            'OPENAI_SEARCH_QUERY_OPTIMIZER_INSTRUCTIONS',
+          ),
+        },
+        { role: 'user', content: searchMessageDto.query },
+      ],
+      temperature: +this.configService.getOrThrow<string>(
+        'OPENAI_SEARCH_QUERY_OPTIMIZER_TEMP',
+      ),
+    });
+
+    const optimizedQuery: string | undefined =
+      optimizedQueryRaw.choices[0].message.content?.trim();
+
+    const vector = optimizedQuery && (await vectorize(optimizedQuery));
+
+    return await this.prisma.$queryRaw`
+      SELECT m.id, m.author_id, m.text, m.image_url, m.created_at,
+        json_build_object(
+          'username', u.username
+        ) AS author,
+        1 - (embedding <=> ${vector}::vector) as cosine_similarity
+      FROM messages AS m
+      LEFT JOIN users AS u ON u.id = m.author_id
+      WHERE chat_id = ${searchMessageDto.chatId}
+        AND deleted_at IS NULL
+        AND embedding IS NOT NULL
+      ORDER BY embedding <=> ${vector}::vector ASC
+      LIMIT 20;
     `;
   }
 
@@ -235,18 +281,27 @@ export class ChatService {
   ): Promise<Message> {
     const { authorId, chatId, text, uniqueFileName } = sendMessageDto;
 
-    const message = await this.prisma.message.create({
-      data: {
-        authorId,
-        chatId,
-        text,
-        imageUrl: uniqueFileName,
-      },
-      include: { author: { select: { username: true } } },
-    });
+    const vector = text && (await vectorize(text));
+    return await this.prisma.$transaction(async (tx) => {
+      const message = await tx.message.create({
+        data: {
+          authorId,
+          chatId,
+          text,
+          imageUrl: uniqueFileName,
+        },
+        include: { author: { select: { username: true } } },
+      });
 
-    await this.chatCacheService.addMessage(chatId, noNulls(message));
-    return message;
+      if (text) {
+        await tx.$executeRaw`
+        UPDATE messages
+        SET embedding = ${vector}::vector
+        WHERE id = ${message.id}
+      `;
+      }
+      return message;
+    });
   }
 
   async editMessage(id: string, text: string): Promise<Message> {
