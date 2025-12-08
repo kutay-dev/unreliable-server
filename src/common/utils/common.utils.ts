@@ -48,6 +48,7 @@ export const vectorize = async (data: string): Promise<string> => {
   const embedding = await aiClient.embeddings.create({
     model: 'text-embedding-3-large',
     input: data,
+    dimensions: 1536,
   });
   const vector = embedding.data[0].embedding;
   const norm = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0));

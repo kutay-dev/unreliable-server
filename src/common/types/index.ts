@@ -1,4 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
+import { Message } from 'generated/prisma/client';
 import { Server, Socket } from 'socket.io';
 import { FromCache } from '../enums';
 
@@ -30,3 +31,7 @@ export interface IEmitToRoomProps {
   socket: string;
   payload: any;
 }
+
+export type MessageWithCosineSimilarity = Message & {
+  cosine_similarity: number;
+};

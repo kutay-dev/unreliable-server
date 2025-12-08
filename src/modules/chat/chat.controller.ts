@@ -2,6 +2,7 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { Role } from '@/common/enums';
 import { JwtGuard } from '@/common/guards/jwt.guard';
+import { MessageWithCosineSimilarity } from '@/common/types';
 import { S3Service } from '@/core/aws/s3/s3.service';
 import { BullmqService } from '@/core/bullmq/bullmq.service';
 import {
@@ -80,7 +81,7 @@ export class ChatController {
   @Get('ai-search-message')
   async aiSearchMessage(
     @Query() searchMessageDto: SearchMessageDto,
-  ): Promise<Message[]> {
+  ): Promise<MessageWithCosineSimilarity[]> {
     return this.chatService.aiSearchMessage(searchMessageDto);
   }
 

@@ -1,10 +1,12 @@
 import { FromCache } from '@/common/enums';
+import { MessageWithCosineSimilarity } from '@/common/types';
 import {
   getRandomSentence,
   noNulls,
   vectorize,
 } from '@/common/utils/common.utils';
 import { S3Service } from '@/core/aws/s3/s3.service';
+import { LoggerService } from '@/core/logger/logger.service';
 import { PrismaService } from '@/core/prisma/prisma.service';
 import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';
 import { RedisService } from '@/core/redis/redis.service';
@@ -46,7 +48,9 @@ export class ChatService {
     private readonly s3Service: S3Service,
     private readonly redisService: RedisService,
     private readonly chatCacheService: ChatCacheService,
+    private readonly logger: LoggerService,
   ) {
+    this.logger.setModuleName(ChatService.name);
     this.aiClient = new OpenAI({
       apiKey: this.configService.getOrThrow<string>('OPENAI_API_KEY'),
     });
@@ -236,7 +240,8 @@ export class ChatService {
 
   async aiSearchMessage(
     searchMessageDto: SearchMessageDto,
-  ): Promise<Message[]> {
+  ): Promise<MessageWithCosineSimilarity[]> {
+    const { query, chatId } = searchMessageDto;
     const optimizedQueryRaw = await this.aiClient.chat.completions.create({
       model: this.configService.getOrThrow<string>(
         'OPENAI_SEARCH_QUERY_OPTIMIZER_MODEL',
@@ -248,7 +253,7 @@ export class ChatService {
             'OPENAI_SEARCH_QUERY_OPTIMIZER_INSTRUCTIONS',
           ),
         },
-        { role: 'user', content: searchMessageDto.query },
+        { role: 'user', content: query },
       ],
       temperature: +this.configService.getOrThrow<string>(
         'OPENAI_SEARCH_QUERY_OPTIMIZER_TEMP',
@@ -260,7 +265,8 @@ export class ChatService {
 
     const vector = optimizedQuery && (await vectorize(optimizedQuery));
 
-    return await this.prisma.$queryRaw`
+    const semanticSearchResult: MessageWithCosineSimilarity[] = await this
+      .prisma.$queryRaw`
       SELECT m.id, m.author_id, m.text, m.image_url, m.created_at,
         json_build_object(
           'username', u.username
@@ -268,12 +274,75 @@ export class ChatService {
         1 - (embedding <=> ${vector}::vector) as cosine_similarity
       FROM messages AS m
       LEFT JOIN users AS u ON u.id = m.author_id
-      WHERE chat_id = ${searchMessageDto.chatId}
+      WHERE chat_id = ${chatId}
         AND deleted_at IS NULL
         AND embedding IS NOT NULL
       ORDER BY embedding <=> ${vector}::vector ASC
       LIMIT 20;
     `;
+
+    const reRankingPrompt = this.configService
+      .getOrThrow<string>('OPENAI_SEMANTIC_SEARCH_RE_RANKING_PROMPT')
+      .replace('<original_query>', query)
+      .replace(
+        '<semanticSearchResult>',
+        JSON.stringify(
+          semanticSearchResult.map((m) => ({ id: m.id, text: m.text })),
+        ),
+      );
+
+    const reRankedIdsRaw = await this.aiClient.chat.completions.create({
+      model: this.configService.getOrThrow<string>(
+        'OPENAI_SEMANTIC_SEARCH_RE_RANKING_MODEL',
+      ),
+      messages: [
+        {
+          role: 'system',
+          content: this.configService.getOrThrow<string>(
+            'OPENAI_SEMANTIC_SEARCH_RE_RANKING_INSTRUCTIONS',
+          ),
+        },
+        { role: 'user', content: reRankingPrompt },
+      ],
+      temperature: +this.configService.getOrThrow<string>(
+        'OPENAI_SEMANTIC_SEARCH_RE_RANKING_TEMP',
+      ),
+    });
+
+    const reRankedIds: string[] | undefined =
+      reRankedIdsRaw.choices[0].message.content
+        ?.split(',')
+        .map((id) => id.trim());
+
+    const validateIds = (
+      reRankedIds: unknown,
+      semanticSearchResult: MessageWithCosineSimilarity[],
+    ): boolean => {
+      const semanticSearchResultIds = semanticSearchResult.map((m) => m.id);
+      if (!Array.isArray(reRankedIds)) return false;
+      if (reRankedIds.length !== semanticSearchResultIds.length) return false;
+
+      for (const id of reRankedIds) {
+        if (typeof id !== 'string') return false;
+        if (!semanticSearchResultIds.includes(id)) return false;
+      }
+      const set = new Set(reRankedIds);
+      if (set.size !== reRankedIds.length) return false;
+
+      return true;
+    };
+
+    if (validateIds(reRankedIds, semanticSearchResult)) {
+      const order = new Map(reRankedIds?.map((id, i) => [id, i]));
+      return semanticSearchResult.sort(
+        (a, b) => order.get(a.id)! - order.get(b.id)!,
+      );
+    }
+
+    this.logger.warn(
+      `Couldn't validate LLM's re-ranking ${JSON.stringify(reRankedIds)}`,
+    );
+    return semanticSearchResult;
   }
 
   async sendMessage(
