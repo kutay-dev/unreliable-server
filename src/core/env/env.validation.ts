@@ -24,6 +24,15 @@ export const envValidationSchema = Joi.object({
   OPENAI_MODEL: Joi.string().required(),
   OPENAI_MODEL_SYSTEM_INSTRUCTIONS: Joi.string().required(),
 
+  OPENAI_SEARCH_QUERY_OPTIMIZER_MODEL: Joi.string().required(),
+  OPENAI_SEARCH_QUERY_OPTIMIZER_INSTRUCTIONS: Joi.string().required(),
+  OPENAI_SEARCH_QUERY_OPTIMIZER_TEMP: Joi.number().required(),
+
+  OPENAI_SEMANTIC_SEARCH_RE_RANKING_MODEL: Joi.string().required(),
+  OPENAI_SEMANTIC_SEARCH_RE_RANKING_INSTRUCTIONS: Joi.string().required(),
+  OPENAI_SEMANTIC_SEARCH_RE_RANKING_PROMPT: Joi.string().required(),
+  OPENAI_SEMANTIC_SEARCH_RE_RANKING_TEMP: Joi.number().required(),
+
   RATE_LIMIT: Joi.number().required(),
   RATE_LIMIT_TTL: Joi.number().required(),
 });

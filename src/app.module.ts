@@ -1,6 +1,6 @@
 import { AwsModule } from '@/core/aws/aws.module';
 import { BullmqModule } from '@/core/bullmq/bullmq.module';
-import { EnvModule } from '@/core/env';
+import { envConfig } from '@/core/env/env.config';
 import { HealthModule } from '@/core/health/health.module';
 import { LoggerModule } from '@/core/logger/logger.module';
 import { RateLimitMiddleware } from '@/core/middleware/rate-limit.middleware';
@@ -15,8 +15,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    EnvModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [envConfig],
+    }),
     LoggerModule,
     PrismaModule,
     RedisModule,
