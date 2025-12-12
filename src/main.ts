@@ -22,7 +22,7 @@ async function bootstrap(): Promise<void> {
   });
 
   const configService = app.get(ConfigService);
-  const logger = app.get(LoggerService);
+  const logger = await app.resolve(LoggerService);
 
   app.enableCors();
   app.use(

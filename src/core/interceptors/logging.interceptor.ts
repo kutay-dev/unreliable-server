@@ -16,9 +16,7 @@ function shouldLogPath(path?: string): boolean {
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  constructor(private readonly logger: LoggerService) {
-    this.logger.setModuleName(LoggingInterceptor.name);
-  }
+  constructor(private readonly logger: LoggerService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     if (context.getType() !== 'http') {
