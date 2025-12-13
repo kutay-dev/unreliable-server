@@ -12,6 +12,7 @@ import { RedisService } from '@/core/redis/redis.service';
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -60,6 +61,19 @@ export class ChatService {
     this.aiClient = new OpenAI({
       apiKey: this.configService.getOrThrow<string>('OPENAI_API_KEY'),
     });
+  }
+
+  private handleServiceError(
+    error: unknown,
+    errorMessage: string,
+    meta?: Record<string, unknown>,
+  ): never {
+    this.logger.error(
+      errorMessage,
+      error instanceof Error ? error.stack : String(error),
+      meta,
+    );
+    throw new InternalServerErrorException(errorMessage);
   }
 
   async createChat(createChatDto: CreateChatDto): Promise<Partial<Chat>> {
@@ -159,86 +173,94 @@ export class ChatService {
   ): Promise<{ data: Message[]; fromCache: FromCache }> {
     const { chatId, cursor, limit } = getMessagesDto;
 
-    let messages: Message[];
-    let fromCache: FromCache = FromCache.FALSE;
+    try {
+      let messages: Message[];
+      let fromCache: FromCache = FromCache.FALSE;
 
-    const getMessagesQuery: Prisma.MessageFindManyArgs = {
-      where: { chatId, deletedAt: null },
-      include: {
-        author: {
-          select: {
-            username: true,
+      const getMessagesQuery: Prisma.MessageFindManyArgs = {
+        where: { chatId, deletedAt: null },
+        include: {
+          author: {
+            select: {
+              username: true,
+            },
           },
-        },
-        poll: {
-          select: {
-            id: true,
-            title: true,
-            options: {
-              select: {
-                id: true,
-                text: true,
-                votes: {
-                  select: {
-                    userId: true,
+          poll: {
+            select: {
+              id: true,
+              title: true,
+              options: {
+                select: {
+                  id: true,
+                  text: true,
+                  votes: {
+                    select: {
+                      userId: true,
+                    },
                   },
                 },
               },
             },
           },
         },
-      },
-    };
+      };
 
-    if (!cursor) {
-      const cached = await this.chatCacheService.getLast50Messages(chatId);
-      if (cached.length === 50) {
-        messages = cached;
-        fromCache = FromCache.TRUE;
-      } else {
-        const remaining = 50 - cached.length;
-        let remainingMessages: Message[];
-
-        if (cached.length > 0) {
-          remainingMessages = await this.prisma.message.findMany({
-            ...getMessagesQuery,
-            cursor: { id: cached[0].id },
-            skip: 1,
-            take: remaining,
-            orderBy: { id: 'desc' },
-          });
-          fromCache = FromCache.PARTIAL;
+      if (!cursor) {
+        const cached = await this.chatCacheService.getLast50Messages(chatId);
+        if (cached.length === 50) {
+          messages = cached;
+          fromCache = FromCache.TRUE;
         } else {
-          remainingMessages = await this.prisma.message.findMany({
-            ...getMessagesQuery,
-            take: remaining,
-            orderBy: { id: 'desc' },
-          });
+          const remaining = 50 - cached.length;
+          let remainingMessages: Message[];
+
+          if (cached.length > 0) {
+            remainingMessages = await this.prisma.message.findMany({
+              ...getMessagesQuery,
+              cursor: { id: cached[0].id },
+              skip: 1,
+              take: remaining,
+              orderBy: { id: 'desc' },
+            });
+            fromCache = FromCache.PARTIAL;
+          } else {
+            remainingMessages = await this.prisma.message.findMany({
+              ...getMessagesQuery,
+              take: remaining,
+              orderBy: { id: 'desc' },
+            });
+          }
+          messages = [...remainingMessages.reverse(), ...cached];
         }
-        messages = [...remainingMessages.reverse(), ...cached];
+      } else {
+        messages = await this.prisma.message.findMany({
+          ...getMessagesQuery,
+          take: limit,
+          cursor: cursor ? { id: cursor } : undefined,
+          skip: cursor ? 1 : 0,
+          orderBy: { id: 'desc' },
+        });
+        messages.reverse();
       }
-    } else {
-      messages = await this.prisma.message.findMany({
-        ...getMessagesQuery,
-        take: limit,
-        cursor: cursor ? { id: cursor } : undefined,
-        skip: cursor ? 1 : 0,
-        orderBy: { id: 'desc' },
-      });
-      messages.reverse();
+
+      const data = await Promise.all(
+        messages.map(async (message) => {
+          if (!message.imageUrl) return message;
+          const presignedUrl = await this.s3Service.presignDownloadUrl(
+            message.imageUrl,
+          );
+          return { ...message, imageUrl: presignedUrl };
+        }),
+      );
+
+      return { data, fromCache };
+    } catch (error) {
+      this.handleServiceError(
+        error,
+        `Failed to fetch messages for chat ${chatId}`,
+        { chatId, cursor },
+      );
     }
-
-    const data = await Promise.all(
-      messages.map(async (message) => {
-        if (!message.imageUrl) return message;
-        const presignedUrl = await this.s3Service.presignDownloadUrl(
-          message.imageUrl,
-        );
-        return { ...message, imageUrl: presignedUrl };
-      }),
-    );
-
-    return { data, fromCache };
   }
 
   async getReadStatus(chatConnectionDto: ChatConnectionDto): Promise<
@@ -287,31 +309,32 @@ export class ChatService {
     searchMessageDto: SearchMessageDto,
   ): Promise<MessageWithCosineSimilarity[]> {
     const { query, chatId } = searchMessageDto;
-    const optimizedQueryRaw = await this.aiClient.chat.completions.create({
-      model: this.configService.getOrThrow<string>(
-        'OPENAI_SEARCH_QUERY_OPTIMIZER_MODEL',
-      ),
-      messages: [
-        {
-          role: 'system',
-          content: this.configService.getOrThrow<string>(
-            'OPENAI_SEARCH_QUERY_OPTIMIZER_INSTRUCTIONS',
-          ),
-        },
-        { role: 'user', content: query },
-      ],
-      temperature: +this.configService.getOrThrow<string>(
-        'OPENAI_SEARCH_QUERY_OPTIMIZER_TEMP',
-      ),
-    });
+    try {
+      const optimizedQueryRaw = await this.aiClient.chat.completions.create({
+        model: this.configService.getOrThrow<string>(
+          'OPENAI_SEARCH_QUERY_OPTIMIZER_MODEL',
+        ),
+        messages: [
+          {
+            role: 'system',
+            content: this.configService.getOrThrow<string>(
+              'OPENAI_SEARCH_QUERY_OPTIMIZER_INSTRUCTIONS',
+            ),
+          },
+          { role: 'user', content: query },
+        ],
+        temperature: +this.configService.getOrThrow<string>(
+          'OPENAI_SEARCH_QUERY_OPTIMIZER_TEMP',
+        ),
+      });
 
-    const optimizedQuery: string | undefined =
-      optimizedQueryRaw.choices[0].message.content?.trim();
+      const optimizedQuery: string | undefined =
+        optimizedQueryRaw.choices[0].message.content?.trim();
 
-    const vector = optimizedQuery && (await vectorize(optimizedQuery));
+      const vector = optimizedQuery && (await vectorize(optimizedQuery));
 
-    const semanticSearchResult: MessageWithCosineSimilarity[] = await this
-      .prisma.$queryRaw`
+      const semanticSearchResult: MessageWithCosineSimilarity[] = await this
+        .prisma.$queryRaw`
       SELECT m.id, m.author_id, m.text, m.image_url, m.created_at,
         json_build_object(
           'username', u.username
@@ -326,68 +349,75 @@ export class ChatService {
       LIMIT 20;
     `;
 
-    const reRankingPrompt = this.configService
-      .getOrThrow<string>('OPENAI_SEMANTIC_SEARCH_RE_RANKING_PROMPT')
-      .replace('<original_query>', query)
-      .replace(
-        '<semanticSearchResult>',
-        JSON.stringify(
-          semanticSearchResult.map((m) => ({ id: m.id, text: m.text })),
-        ),
-      );
-
-    const reRankedIdsRaw = await this.aiClient.chat.completions.create({
-      model: this.configService.getOrThrow<string>(
-        'OPENAI_SEMANTIC_SEARCH_RE_RANKING_MODEL',
-      ),
-      messages: [
-        {
-          role: 'system',
-          content: this.configService.getOrThrow<string>(
-            'OPENAI_SEMANTIC_SEARCH_RE_RANKING_INSTRUCTIONS',
+      const reRankingPrompt = this.configService
+        .getOrThrow<string>('OPENAI_SEMANTIC_SEARCH_RE_RANKING_PROMPT')
+        .replace('<original_query>', query)
+        .replace(
+          '<semanticSearchResult>',
+          JSON.stringify(
+            semanticSearchResult.map((m) => ({ id: m.id, text: m.text })),
           ),
-        },
-        { role: 'user', content: reRankingPrompt },
-      ],
-      temperature: +this.configService.getOrThrow<string>(
-        'OPENAI_SEMANTIC_SEARCH_RE_RANKING_TEMP',
-      ),
-    });
+        );
 
-    const reRankedIds: string[] | undefined =
-      reRankedIdsRaw.choices[0].message.content
-        ?.split(',')
-        .map((id) => id.trim());
+      const reRankedIdsRaw = await this.aiClient.chat.completions.create({
+        model: this.configService.getOrThrow<string>(
+          'OPENAI_SEMANTIC_SEARCH_RE_RANKING_MODEL',
+        ),
+        messages: [
+          {
+            role: 'system',
+            content: this.configService.getOrThrow<string>(
+              'OPENAI_SEMANTIC_SEARCH_RE_RANKING_INSTRUCTIONS',
+            ),
+          },
+          { role: 'user', content: reRankingPrompt },
+        ],
+        temperature: +this.configService.getOrThrow<string>(
+          'OPENAI_SEMANTIC_SEARCH_RE_RANKING_TEMP',
+        ),
+      });
 
-    const validateIds = (
-      reRankedIds: unknown,
-      semanticSearchResult: MessageWithCosineSimilarity[],
-    ): boolean => {
-      const semanticSearchResultIds = semanticSearchResult.map((m) => m.id);
-      if (!Array.isArray(reRankedIds)) return false;
-      if (reRankedIds.length !== semanticSearchResultIds.length) return false;
+      const reRankedIds: string[] | undefined =
+        reRankedIdsRaw.choices[0].message.content
+          ?.split(',')
+          .map((id) => id.trim());
 
-      for (const id of reRankedIds) {
-        if (typeof id !== 'string') return false;
-        if (!semanticSearchResultIds.includes(id)) return false;
+      const validateIds = (
+        reRankedIds: unknown,
+        semanticSearchResult: MessageWithCosineSimilarity[],
+      ): boolean => {
+        const semanticSearchResultIds = semanticSearchResult.map((m) => m.id);
+        if (!Array.isArray(reRankedIds)) return false;
+        if (reRankedIds.length !== semanticSearchResultIds.length) return false;
+
+        for (const id of reRankedIds) {
+          if (typeof id !== 'string') return false;
+          if (!semanticSearchResultIds.includes(id)) return false;
+        }
+        const set = new Set(reRankedIds);
+        if (set.size !== reRankedIds.length) return false;
+
+        return true;
+      };
+
+      if (validateIds(reRankedIds, semanticSearchResult)) {
+        const order = new Map(reRankedIds?.map((id, i) => [id, i]));
+        return semanticSearchResult.sort(
+          (a, b) => order.get(a.id)! - order.get(b.id)!,
+        );
       }
-      const set = new Set(reRankedIds);
-      if (set.size !== reRankedIds.length) return false;
 
-      return true;
-    };
-
-    if (validateIds(reRankedIds, semanticSearchResult)) {
-      const order = new Map(reRankedIds?.map((id, i) => [id, i]));
-      return semanticSearchResult.sort(
-        (a, b) => order.get(a.id)! - order.get(b.id)!,
+      this.logger.warn(
+        `Couldn't validate LLM's re-ranking ${JSON.stringify(reRankedIds)}`,
+      );
+      return semanticSearchResult;
+    } catch (error) {
+      this.handleServiceError(
+        error,
+        `Semantic search failed for chat ${chatId}`,
+        { chatId, query },
       );
     }
-
-    this.logger.warn(
-      `Couldn't validate LLM's re-ranking ${JSON.stringify(reRankedIds)}`,
-    );
-    return semanticSearchResult;
   }
 
   async sendMessage(
@@ -395,27 +425,35 @@ export class ChatService {
   ): Promise<Message> {
     const { authorId, chatId, text, uniqueFileName } = sendMessageDto;
 
-    const vector = text && (await vectorize(text));
-    return await this.prisma.$transaction(async (tx) => {
-      const message = await tx.message.create({
-        data: {
-          authorId,
-          chatId,
-          text,
-          imageUrl: uniqueFileName,
-        },
-        include: { author: { select: { username: true } } },
-      });
+    try {
+      const vector = text && (await vectorize(text));
+      return await this.prisma.$transaction(async (tx) => {
+        const message = await tx.message.create({
+          data: {
+            authorId,
+            chatId,
+            text,
+            imageUrl: uniqueFileName,
+          },
+          include: { author: { select: { username: true } } },
+        });
 
-      if (text) {
-        await tx.$executeRaw`
+        if (text) {
+          await tx.$executeRaw`
         UPDATE messages
         SET embedding = ${vector}::vector
         WHERE id = ${message.id}
       `;
-      }
-      return message;
-    });
+        }
+        return message;
+      });
+    } catch (error) {
+      this.handleServiceError(
+        error,
+        `Failed to send message to chat ${chatId}`,
+        { chatId, authorId },
+      );
+    }
   }
 
   async editMessage(id: string, text: string): Promise<Message> {
@@ -492,51 +530,59 @@ export class ChatService {
   }
 
   async sendAIMessage(content: string, userId: string): Promise<AIMessage> {
-    await this.prisma.aIMessage.create({
-      data: {
-        role: AIMessageRole.USER,
-        userId,
-        content,
-      },
-    });
-
-    const chatHistory: { role: any; content: string }[] =
-      await this.prisma.aIMessage.findMany({
-        where: {
+    try {
+      await this.prisma.aIMessage.create({
+        data: {
+          role: AIMessageRole.USER,
           userId,
+          content,
         },
-        orderBy: {
-          id: 'desc',
-        },
-        select: {
-          role: true,
-          content: true,
-        },
-        take: 14,
       });
 
-    chatHistory.reverse().unshift({
-      role: 'system',
-      content: this.configService.getOrThrow<string>(
-        'OPENAI_MODEL_SYSTEM_INSTRUCTIONS',
-      ),
-    });
+      const chatHistory: { role: any; content: string }[] =
+        await this.prisma.aIMessage.findMany({
+          where: {
+            userId,
+          },
+          orderBy: {
+            id: 'desc',
+          },
+          select: {
+            role: true,
+            content: true,
+          },
+          take: 14,
+        });
 
-    const response = await this.aiClient.chat.completions.create({
-      model: this.configService.getOrThrow<string>('OPENAI_MODEL'),
-      messages: chatHistory.map((message) => ({
-        ...message,
-        role: message.role.toLowerCase(),
-      })),
-    });
+      chatHistory.reverse().unshift({
+        role: 'system',
+        content: this.configService.getOrThrow<string>(
+          'OPENAI_MODEL_SYSTEM_INSTRUCTIONS',
+        ),
+      });
 
-    return await this.prisma.aIMessage.create({
-      data: {
-        role: AIMessageRole.ASSISTANT,
-        userId: userId,
-        content: response.choices[0].message.content || 'null',
-      },
-    });
+      const response = await this.aiClient.chat.completions.create({
+        model: this.configService.getOrThrow<string>('OPENAI_MODEL'),
+        messages: chatHistory.map((message) => ({
+          ...message,
+          role: message.role.toLowerCase(),
+        })),
+      });
+
+      return await this.prisma.aIMessage.create({
+        data: {
+          role: AIMessageRole.ASSISTANT,
+          userId: userId,
+          content: response.choices[0].message.content || 'null',
+        },
+      });
+    } catch (error) {
+      this.handleServiceError(
+        error,
+        `Failed to generate AI response for user ${userId}`,
+        { userId },
+      );
+    }
   }
 
   async createPoll(
@@ -544,48 +590,56 @@ export class ChatService {
   ): Promise<Poll> {
     const { title, chatId, userId, options } = createPollDto;
 
-    const poll = await this.prisma.poll.create({
-      data: {
-        title,
-        message: {
-          create: {
-            chatId,
-            authorId: userId,
+    try {
+      const poll = await this.prisma.poll.create({
+        data: {
+          title,
+          message: {
+            create: {
+              chatId,
+              authorId: userId,
+            },
+          },
+          options: {
+            createMany: {
+              data: options.map((text) => ({ text })),
+            },
           },
         },
-        options: {
-          createMany: {
-            data: options.map((text) => ({ text })),
-          },
-        },
-      },
-      include: {
-        message: true,
-        options: {
-          select: {
-            id: true,
-            text: true,
-            votes: {
-              select: {
-                userId: true,
+        include: {
+          message: true,
+          options: {
+            select: {
+              id: true,
+              text: true,
+              votes: {
+                select: {
+                  userId: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
 
-    const messageWithPoll = {
-      ...poll.message,
-      poll: {
-        id: poll.id,
-        title: poll.title,
-        options: poll.options,
-      },
-    };
+      const messageWithPoll = {
+        ...poll.message,
+        poll: {
+          id: poll.id,
+          title: poll.title,
+          options: poll.options,
+        },
+      };
 
-    await this.chatCacheService.addMessage(chatId, noNulls(messageWithPoll));
-    return poll;
+      await this.chatCacheService.addMessage(chatId, noNulls(messageWithPoll));
+      return poll;
+    } catch (error) {
+      this.handleServiceError(
+        error,
+        `Failed to create poll in chat ${chatId}`,
+        { chatId, userId },
+      );
+    }
   }
 
   async voteForPoll(
@@ -593,14 +647,22 @@ export class ChatService {
   ): Promise<PollVote> {
     const { userId, optionId } = voteForPollDto;
 
-    await this.redisService.del(
-      `chat:${voteForPollDto.chatId}:messages:last50`,
-    );
-    return await this.prisma.pollVote.create({
-      data: {
-        userId,
-        optionId,
-      },
-    });
+    try {
+      await this.redisService.del(
+        `chat:${voteForPollDto.chatId}:messages:last50`,
+      );
+      return await this.prisma.pollVote.create({
+        data: {
+          userId,
+          optionId,
+        },
+      });
+    } catch (error) {
+      this.handleServiceError(
+        error,
+        `Failed to vote for poll option ${optionId}`,
+        { chatId: voteForPollDto.chatId, userId, optionId },
+      );
+    }
   }
 }

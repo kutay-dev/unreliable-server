@@ -12,6 +12,7 @@ import {
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
+  WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
@@ -61,16 +62,23 @@ export class ChatGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) chatConnectionDto: ChatConnectionDto,
   ): Promise<void> {
-    const userId = client.data.user.sub;
-    await this.redisService.set(`user:${userId}:online`, true, 30);
+    const userId = client?.data?.user?.sub;
+    try {
+      await this.redisService.set(`user:${userId}:online`, true, 30);
 
-    emitToRoom({
-      client,
-      server: this.server,
-      chatId: chatConnectionDto.chatId,
-      socket: 'user:online',
-      payload: { userId },
-    });
+      emitToRoom({
+        client,
+        server: this.server,
+        chatId: chatConnectionDto.chatId,
+        socket: 'user:online',
+        payload: { userId },
+      });
+    } catch (error) {
+      this.handleWsError(error, 'Failed to process ping', {
+        userId,
+        chatId: chatConnectionDto.chatId,
+      });
+    }
   }
 
   @UseGuards(MembershipGuard)
@@ -80,19 +88,25 @@ export class ChatGateway implements OnGatewayConnection {
     @MessageBody(ParseJSONPipe) joinChatDto: ChatConnectionDto,
   ): Promise<void> {
     const chatName = this.chatName(joinChatDto.chatId);
-    await client.join(chatName);
+    const userId = client?.data?.user?.sub;
+    try {
+      await client.join(chatName);
 
-    emitToRoom({
-      client,
-      server: this.server,
-      chatId: joinChatDto.chatId,
-      socket: 'chat:join',
-      payload: { userId: client.data.user.sub },
-    });
+      emitToRoom({
+        client,
+        server: this.server,
+        chatId: joinChatDto.chatId,
+        socket: 'chat:join',
+        payload: { userId },
+      });
 
-    this.logger.log(
-      `author ${client?.data?.user?.sub} connected to ${chatName}`,
-    );
+      this.logger.log(`author ${userId} connected to ${chatName}`);
+    } catch (error) {
+      this.handleWsError(error, `Failed to join chat ${chatName}`, {
+        userId,
+        chatId: joinChatDto.chatId,
+      });
+    }
   }
 
   @UseGuards(MembershipGuard)
@@ -101,8 +115,16 @@ export class ChatGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) leaveChatDto: ChatConnectionDto,
   ): Promise<void> {
-    await client.leave(this.chatName(leaveChatDto.chatId));
-    client.emit('chat:leave', { chatId: leaveChatDto.chatId });
+    const chatId = leaveChatDto.chatId;
+    try {
+      await client.leave(this.chatName(chatId));
+      client.emit('chat:leave', { chatId });
+    } catch (error) {
+      this.handleWsError(error, `Failed to leave chat ${chatId}`, {
+        chatId,
+        userId: client?.data?.user?.sub,
+      });
+    }
   }
 
   @UseGuards(MembershipGuard)
@@ -112,21 +134,28 @@ export class ChatGateway implements OnGatewayConnection {
     @MessageBody(ParseJSONPipe) sendMessageDto: SendMessageDto,
   ): Promise<void> {
     const { chatId, text, uniqueFileName } = sendMessageDto;
-    const authorId = client.data.user.sub;
-    const imageUrl = uniqueFileName
-      ? await this.s3Service.presignDownloadUrl(uniqueFileName)
-      : null;
+    const authorId = client?.data?.user?.sub;
+    try {
+      const imageUrl = uniqueFileName
+        ? await this.s3Service.presignDownloadUrl(uniqueFileName)
+        : null;
 
-    const message = await this.chatService.sendMessage({
-      chatId,
-      authorId,
-      text,
-      uniqueFileName,
-    });
+      const message = await this.chatService.sendMessage({
+        chatId,
+        authorId,
+        text,
+        uniqueFileName,
+      });
 
-    this.server
-      .to(this.chatName(chatId))
-      .emit('message:sent', { ...message, imageUrl });
+      this.server
+        .to(this.chatName(chatId))
+        .emit('message:sent', { ...message, imageUrl });
+    } catch (error) {
+      this.handleWsError(error, `Failed to send message to chat ${chatId}`, {
+        chatId,
+        authorId,
+      });
+    }
   }
 
   @UseGuards(MembershipGuard)
@@ -135,21 +164,28 @@ export class ChatGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) updateMessageDto: UpdateMessageDto,
   ): Promise<void> {
-    const message = await this.chatService.editMessage(
-      updateMessageDto.messageId,
-      updateMessageDto.text,
-    );
+    try {
+      const message = await this.chatService.editMessage(
+        updateMessageDto.messageId,
+        updateMessageDto.text,
+      );
 
-    emitToRoom({
-      client,
-      server: this.server,
-      chatId: message.chatId,
-      socket: 'message:updated',
-      payload: {
+      emitToRoom({
+        client,
+        server: this.server,
+        chatId: message.chatId,
+        socket: 'message:updated',
+        payload: {
+          messageId: updateMessageDto.messageId,
+          text: updateMessageDto.text,
+        },
+      });
+    } catch (error) {
+      this.handleWsError(error, 'Failed to update message', {
         messageId: updateMessageDto.messageId,
-        text: updateMessageDto.text,
-      },
-    });
+        userId: client?.data?.user?.sub,
+      });
+    }
   }
 
   @UseGuards(MembershipGuard)
@@ -158,19 +194,26 @@ export class ChatGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) deleteMessageDto: DeleteMessageDto,
   ): Promise<void> {
-    const message = await this.chatService.deleteMessage(
-      deleteMessageDto.messageId,
-    );
+    try {
+      const message = await this.chatService.deleteMessage(
+        deleteMessageDto.messageId,
+      );
 
-    emitToRoom({
-      client,
-      server: this.server,
-      chatId: message.chatId,
-      socket: 'message:deleted',
-      payload: {
+      emitToRoom({
+        client,
+        server: this.server,
+        chatId: message.chatId,
+        socket: 'message:deleted',
+        payload: {
+          messageId: deleteMessageDto.messageId,
+        },
+      });
+    } catch (error) {
+      this.handleWsError(error, 'Failed to delete message', {
         messageId: deleteMessageDto.messageId,
-      },
-    });
+        userId: client?.data?.user?.sub,
+      });
+    }
   }
 
   @UseGuards(MembershipGuard)
@@ -179,18 +222,26 @@ export class ChatGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) readMessageDto: ReadMessageDto,
   ): Promise<void> {
-    const seenMessage = await this.chatService.readMessage({
-      ...readMessageDto,
-      userId: client.data.user.sub,
-    });
+    const userId = client?.data?.user?.sub;
+    try {
+      const seenMessage = await this.chatService.readMessage({
+        ...readMessageDto,
+        userId,
+      });
 
-    emitToRoom({
-      client,
-      server: this.server,
-      chatId: readMessageDto.chatId,
-      socket: 'message:seen',
-      payload: seenMessage,
-    });
+      emitToRoom({
+        client,
+        server: this.server,
+        chatId: readMessageDto.chatId,
+        socket: 'message:seen',
+        payload: seenMessage,
+      });
+    } catch (error) {
+      this.handleWsError(error, 'Failed to mark message as read', {
+        chatId: readMessageDto.chatId,
+        userId,
+      });
+    }
   }
 
   @UseGuards(MembershipGuard)
@@ -199,18 +250,26 @@ export class ChatGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) createPollDto: CreatePollDto,
   ): Promise<void> {
-    const poll = await this.chatService.createPoll({
-      ...createPollDto,
-      userId: client.data.user.sub,
-    });
+    const userId = client?.data?.user?.sub;
+    try {
+      const poll = await this.chatService.createPoll({
+        ...createPollDto,
+        userId,
+      });
 
-    emitToRoom({
-      client,
-      server: this.server,
-      chatId: createPollDto.chatId,
-      socket: 'poll:created',
-      payload: poll,
-    });
+      emitToRoom({
+        client,
+        server: this.server,
+        chatId: createPollDto.chatId,
+        socket: 'poll:created',
+        payload: poll,
+      });
+    } catch (error) {
+      this.handleWsError(error, 'Failed to create poll', {
+        chatId: createPollDto.chatId,
+        userId,
+      });
+    }
   }
 
   @UseGuards(MembershipGuard)
@@ -219,17 +278,39 @@ export class ChatGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody(ParseJSONPipe) voteForPollDto: VoteForPollDto,
   ): Promise<void> {
-    const vote = await this.chatService.voteForPoll({
-      ...voteForPollDto,
-      userId: client.data.user.sub,
-    });
+    const userId = client?.data?.user?.sub;
+    try {
+      const vote = await this.chatService.voteForPoll({
+        ...voteForPollDto,
+        userId,
+      });
 
-    emitToRoom({
-      client,
-      server: this.server,
-      chatId: voteForPollDto.chatId,
-      socket: 'poll:receive:vote',
-      payload: vote,
-    });
+      emitToRoom({
+        client,
+        server: this.server,
+        chatId: voteForPollDto.chatId,
+        socket: 'poll:receive:vote',
+        payload: vote,
+      });
+    } catch (error) {
+      this.handleWsError(error, 'Failed to vote on poll', {
+        chatId: voteForPollDto.chatId,
+        userId,
+        optionId: voteForPollDto.optionId,
+      });
+    }
+  }
+
+  private handleWsError(
+    error: unknown,
+    errorMessage: string,
+    meta?: Record<string, unknown>,
+  ): never {
+    this.logger.error(
+      errorMessage,
+      error instanceof Error ? error.stack : String(error),
+      meta,
+    );
+    throw new WsException(errorMessage);
   }
 }
