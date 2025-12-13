@@ -3,7 +3,7 @@ import { emitToRoom } from '@/common/utils/common.utils';
 import { S3Service } from '@/core/aws/s3/s3.service';
 import { LoggerService } from '@/core/logger/logger.service';
 import { RedisService } from '@/core/redis/redis.service';
-import { UsePipes, ValidationPipe } from '@nestjs/common';
+import { UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
   ConnectedSocket,
@@ -24,6 +24,7 @@ import {
   UpdateMessageDto,
   VoteForPollDto,
 } from './dto';
+import { MembershipGuard } from './guards';
 
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 @WebSocketGateway({ cors: true, namespace: 'chat' })
@@ -72,6 +73,7 @@ export class ChatGateway implements OnGatewayConnection {
     });
   }
 
+  @UseGuards(MembershipGuard)
   @SubscribeMessage('chat:join')
   async joinChat(
     @ConnectedSocket() client: Socket,
@@ -93,6 +95,7 @@ export class ChatGateway implements OnGatewayConnection {
     );
   }
 
+  @UseGuards(MembershipGuard)
   @SubscribeMessage('chat:leave')
   async leaveChat(
     @ConnectedSocket() client: Socket,
@@ -102,6 +105,7 @@ export class ChatGateway implements OnGatewayConnection {
     client.emit('chat:leave', { chatId: leaveChatDto.chatId });
   }
 
+  @UseGuards(MembershipGuard)
   @SubscribeMessage('message:send')
   async sendMessage(
     @ConnectedSocket() client: Socket,
@@ -125,6 +129,7 @@ export class ChatGateway implements OnGatewayConnection {
       .emit('message:sent', { ...message, imageUrl });
   }
 
+  @UseGuards(MembershipGuard)
   @SubscribeMessage('message:update')
   async updateMessage(
     @ConnectedSocket() client: Socket,
@@ -147,6 +152,7 @@ export class ChatGateway implements OnGatewayConnection {
     });
   }
 
+  @UseGuards(MembershipGuard)
   @SubscribeMessage('message:delete')
   async deleteMessage(
     @ConnectedSocket() client: Socket,
@@ -167,6 +173,7 @@ export class ChatGateway implements OnGatewayConnection {
     });
   }
 
+  @UseGuards(MembershipGuard)
   @SubscribeMessage('message:read')
   async readMessage(
     @ConnectedSocket() client: Socket,
@@ -186,6 +193,7 @@ export class ChatGateway implements OnGatewayConnection {
     });
   }
 
+  @UseGuards(MembershipGuard)
   @SubscribeMessage('poll:create')
   async createPoll(
     @ConnectedSocket() client: Socket,
@@ -205,6 +213,7 @@ export class ChatGateway implements OnGatewayConnection {
     });
   }
 
+  @UseGuards(MembershipGuard)
   @SubscribeMessage('poll:vote')
   async voteForPoll(
     @ConnectedSocket() client: Socket,

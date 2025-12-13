@@ -41,9 +41,9 @@ export class AuthService {
       name: 'Paris',
       type: ChatType.PUBLIC,
     });
-    await this.chatService.insertMember(god!.id, paris.id);
+    await this.chatService.insertMember(god!.id, paris.id!);
     const data = await this.chatService.sendMessage({
-      chatId: paris.id,
+      chatId: paris.id!,
       authorId: god!.id,
       text: 'In the beginning God created the heaven and the earth',
     });

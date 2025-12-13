@@ -1,8 +1,7 @@
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Roles } from '@/common/decorators/roles.decorator';
-import { Role } from '@/common/enums';
+import { FromCache, Role } from '@/common/enums';
 import { JwtGuard } from '@/common/guards/jwt.guard';
-import { MessageWithCosineSimilarity } from '@/common/types';
 import { S3Service } from '@/core/aws/s3/s3.service';
 import { BullmqService } from '@/core/bullmq/bullmq.service';
 import {
@@ -29,11 +28,13 @@ import {
   CreateChatDto,
   GenerateMessageDto,
   GetMessagesDto,
+  LogIntoChatDto,
   ScheduleMessageDto,
   SearchMessageDto,
   SendAIMessageDto,
 } from './dto';
-import { ChatAuthGuard } from './guards';
+import { MembershipGuard } from './guards';
+import { Membership, MessageWithCosineSimilarity } from './types';
 
 @UseGuards(JwtGuard)
 @Controller('chat')
@@ -44,33 +45,58 @@ export class ChatController {
     private readonly bullmqService: BullmqService,
   ) {}
 
-  @Get('list')
-  listChats(
+  @Get('list-user-chats')
+  async listUserChats(
     @CurrentUser() user: User,
   ): Promise<{ id: string; name: string; type: ChatType }[]> {
-    return this.chatService.listChats(user.id);
+    return await this.chatService.listUserChats(user.id);
   }
 
-  @UseGuards(ChatAuthGuard)
+  @Post('create-chat')
+  async createChat(
+    @Body() createChatDto: CreateChatDto,
+  ): Promise<Partial<Chat>> {
+    return await this.chatService.createChat(createChatDto);
+  }
+
   @Post('join/:id')
-  async joinChat(@Param('id') chatId: string, @CurrentUser() user: User) {
-    const isMember = await this.chatService.validateChatMember(user.id, chatId);
-    if (!isMember) {
-      await this.chatService.insertMember(user.id, chatId);
-    }
-    return isMember;
+  async joinChat(
+    @Param('id') chatId: string,
+    @CurrentUser() user: User,
+  ): Promise<Membership> {
+    return await this.chatService.validateMembership(user.id, chatId);
   }
 
+  @Post('log-into-chat')
+  async logIntoChat(
+    @Body() logIntoChatDto: LogIntoChatDto,
+    @CurrentUser() user: User,
+  ): Promise<boolean> {
+    return await this.chatService.logIntoChat(logIntoChatDto, user.id);
+  }
+
+  @UseGuards(MembershipGuard)
   @Get('get-messages')
-  async getMessages(@Query() getMessagesDto: GetMessagesDto) {
+  async getMessages(
+    @Query() getMessagesDto: GetMessagesDto,
+  ): Promise<{ data: Message[]; fromCache: FromCache }> {
     return this.chatService.getMessages(getMessagesDto);
   }
 
+  @UseGuards(MembershipGuard)
   @Get('get-read-status')
-  async getReadStatus(@Query() chatConnectionDto: ChatConnectionDto) {
+  async getReadStatus(@Query() chatConnectionDto: ChatConnectionDto): Promise<
+    {
+      id: string;
+      lastSeenMessageId: string;
+      updatedAt: Date;
+      user: { id: string; username: string };
+    }[]
+  > {
     return this.chatService.getReadStatus(chatConnectionDto);
   }
 
+  @UseGuards(MembershipGuard)
   @Get('search-message')
   async searchMessage(
     @Query() searchMessageDto: SearchMessageDto,
@@ -78,6 +104,7 @@ export class ChatController {
     return this.chatService.searchMessage(searchMessageDto);
   }
 
+  @UseGuards(MembershipGuard)
   @Get('ai-search-message')
   async aiSearchMessage(
     @Query() searchMessageDto: SearchMessageDto,
@@ -96,6 +123,7 @@ export class ChatController {
     );
   }
 
+  @UseGuards(MembershipGuard)
   @Post('schedule-message')
   async scheduleMessage(
     @Body() scheduleMessageDto: ScheduleMessageDto,
@@ -117,11 +145,6 @@ export class ChatController {
     );
   }
 
-  @Post('create')
-  async createChat(@Body() createChatDto: CreateChatDto): Promise<Chat> {
-    return await this.chatService.createChat(createChatDto);
-  }
-
   @Get('get-upload-url')
   async getUploadUrl(
     @Query('fileName') fileName: string,
@@ -135,17 +158,19 @@ export class ChatController {
 
   @Roles(Role.GOD)
   @Post('generate-incrementing-messages')
-  generateIncrementingMessages(
+  async generateIncrementingMessages(
     @Body() generateMessageDto: GenerateMessageDto,
   ): Promise<Message[]> {
-    return this.chatService.generateIncrementingMessages(generateMessageDto);
+    return await this.chatService.generateIncrementingMessages(
+      generateMessageDto,
+    );
   }
 
   @Roles(Role.GOD)
   @Post('generate-sentences')
-  generateSentences(
+  async generateSentences(
     @Body() generateMessageDto: GenerateMessageDto,
   ): Promise<BatchPayload> {
-    return this.chatService.generateSentences(generateMessageDto);
+    return await this.chatService.generateSentences(generateMessageDto);
   }
 }

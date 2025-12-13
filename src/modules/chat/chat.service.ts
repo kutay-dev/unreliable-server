@@ -1,5 +1,4 @@
 import { FromCache } from '@/common/enums';
-import { MessageWithCosineSimilarity } from '@/common/types';
 import {
   getRandomSentence,
   noNulls,
@@ -10,8 +9,13 @@ import { LoggerService } from '@/core/logger/logger.service';
 import { PrismaService } from '@/core/prisma/prisma.service';
 import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';
 import { RedisService } from '@/core/redis/redis.service';
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as argon from 'argon2';
 import {
   AIMessage,
   AIMessageRole,
@@ -32,11 +36,13 @@ import {
   CreatePollDto,
   GenerateMessageDto,
   GetMessagesDto,
+  LogIntoChatDto,
   ReadMessageDto,
   SearchMessageDto,
   SendMessageDto,
   VoteForPollDto,
 } from './dto';
+import { Membership, MessageWithCosineSimilarity } from './types';
 
 @Injectable()
 export class ChatService {
@@ -56,35 +62,74 @@ export class ChatService {
     });
   }
 
-  async createChat(createChatDto: CreateChatDto): Promise<Chat> {
+  async createChat(createChatDto: CreateChatDto): Promise<Partial<Chat>> {
     const { name, type, password } = createChatDto;
+    const chatType = type ?? ChatType.PRIVATE;
 
-    return await this.prisma.chat.create({
+    if (chatType === ChatType.PRIVATE && !password) {
+      throw new BadRequestException('Private chats must have a password');
+    }
+    const hash =
+      chatType === ChatType.PRIVATE && password
+        ? await argon.hash(password)
+        : undefined;
+
+    return this.prisma.chat.create({
       data: {
         name,
-        type,
-        password,
+        type: chatType,
+        password: hash ?? null,
+      },
+      select: {
+        name: true,
+        type: true,
       },
     });
   }
 
-  async validateChatMember(userId: string, chatId: string): Promise<boolean> {
-    const member = await this.prisma.chatMember.findUnique({
-      where: { userId_chatId: { userId, chatId } },
-      select: { id: true },
+  async logIntoChat(
+    logIntoChatDto: LogIntoChatDto,
+    userId: string,
+  ): Promise<boolean> {
+    const { chatId, password } = logIntoChatDto;
+    const chat = await this.prisma.chat.findUnique({
+      where: { id: chatId },
+      select: { type: true, password: true },
     });
-    return !!member;
+    if (chat?.type === ChatType.PUBLIC) {
+      await this.insertMember(userId, chatId);
+      return true;
+    }
+    const passwordMatches = await argon.verify(chat!.password!, password!);
+    if (passwordMatches) {
+      await this.insertMember(userId, chatId);
+      return true;
+    }
+    throw new UnauthorizedException('Incorrect password');
+  }
+
+  async validateMembership(
+    userId: string,
+    chatId: string,
+  ): Promise<Membership> {
+    const chatMemberRows: Membership = await this.prisma.$queryRaw`
+        SELECT c.type, cm.id
+        FROM chats AS c
+        LEFT JOIN chat_members AS cm ON cm.chat_id = c.id AND cm.user_id = ${userId}
+        WHERE c.id = ${chatId}
+        LIMIT 1
+    `;
+    const chatMember: Membership = chatMemberRows[0];
+    return chatMember;
   }
 
   async insertMember(userId: string, chatId: string): Promise<ChatMember> {
-    return await this.prisma.chatMember.upsert({
-      where: { userId_chatId: { userId, chatId } },
-      create: { userId, chatId },
-      update: {},
+    return await this.prisma.chatMember.create({
+      data: { userId, chatId },
     });
   }
 
-  async listChats(
+  async listUserChats(
     userId: string,
   ): Promise<{ id: string; name: string; type: ChatType }[]> {
     return await this.prisma.chat.findMany({

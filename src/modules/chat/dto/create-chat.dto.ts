@@ -7,10 +7,9 @@ export class CreateChatDto {
   @IsString()
   name: string;
 
-  @ApiPropertyOptional({ example: ChatType.PRIVATE })
-  @IsOptional()
+  @ApiProperty({ example: ChatType.PRIVATE })
   @IsEnum(ChatType)
-  type?: ChatType;
+  type: ChatType;
 
   @ApiPropertyOptional({ example: 'password123' })
   @IsOptional()

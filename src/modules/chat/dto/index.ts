@@ -11,4 +11,5 @@ export * from './message/update-message.dto';
 export * from './chat-connection.dto';
 export * from './create-chat.dto';
 export * from './create-poll.dto';
+export * from './log-into-chat.dto';
 export * from './vote-for-poll.dto';

@@ -1,1 +1,1 @@
-export * from './chat-auth.guard';
+export * from './membership.guard';

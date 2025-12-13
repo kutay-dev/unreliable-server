@@ -44,9 +44,9 @@ model User {
 
 model Chat {
   id       String   @id @default(uuid()) @db.Uuid
-  name     String   @unique @map("name") @db.VarChar(50)
+  name     String   @map("name") @db.VarChar(50)
   password String?  @map("password") @db.VarChar(255)
-  type     ChatType @default(PRIVATE) @map("type")
+  type     ChatType @map("type")
 
   messages   Message[]
   members    ChatMember[]
