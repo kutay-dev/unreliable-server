@@ -55,3 +55,11 @@ export const vectorize = async (data: string): Promise<string> => {
   const normalizedVector = vector.map((v) => v / norm);
   return `[${normalizedVector.join(',')}]`;
 };
+
+export const normalizeString = (string: string): string => {
+  return string
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_\s]/g, '')
+    .replace(/\s+/g, '_');
+};

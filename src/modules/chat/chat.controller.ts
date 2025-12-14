@@ -1,6 +1,8 @@
+import { ConfigEnabled } from '@/common/decorators/config-enabled.decorator';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { FromCache, Role } from '@/common/enums';
+import { AppConfigGuard } from '@/common/guards/app-config.guard';
 import { JwtGuard } from '@/common/guards/jwt.guard';
 import { S3Service } from '@/core/aws/s3/s3.service';
 import { BullmqService } from '@/core/bullmq/bullmq.service';
@@ -22,6 +24,7 @@ import type {
   User,
 } from 'generated/prisma/client';
 import { BatchPayload } from 'generated/prisma/internal/prismaNamespace';
+import { AppConfigs } from '../app-config/configs';
 import { ChatService } from './chat.service';
 import {
   ChatConnectionDto,
@@ -36,7 +39,7 @@ import {
 import { MembershipGuard } from './guards';
 import { Membership, MessageWithCosineSimilarity } from './types';
 
-@UseGuards(JwtGuard)
+@UseGuards(JwtGuard, AppConfigGuard)
 @Controller('chat')
 export class ChatController {
   constructor(
@@ -105,6 +108,7 @@ export class ChatController {
   }
 
   @UseGuards(MembershipGuard)
+  @ConfigEnabled(AppConfigs.SemanticSearchEnabled)
   @Get('ai-search-message')
   async aiSearchMessage(
     @Query() searchMessageDto: SearchMessageDto,

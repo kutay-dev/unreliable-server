@@ -6,6 +6,7 @@ import { LoggerModule } from '@/core/logger/logger.module';
 import { RateLimitMiddleware } from '@/core/middleware/rate-limit.middleware';
 import { PrismaModule } from '@/core/prisma/prisma.module';
 import { RedisModule } from '@/core/redis/redis.module';
+import { AppConfigModule } from '@/modules/app-config/app-config.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { ChatModule } from '@/modules/chat/chat.module';
 import { UserModule } from '@/modules/user/user.module';
@@ -39,6 +40,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     AuthModule,
     UserModule,
     ChatModule,
+    AppConfigModule,
   ],
 })
 export class AppModule {

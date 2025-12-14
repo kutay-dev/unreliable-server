@@ -1,0 +1,91 @@
+import { normalizeString } from '@/common/utils/common.utils';
+import { LoggerService } from '@/core/logger/logger.service';
+import { PrismaService } from '@/core/prisma/prisma.service';
+import { Injectable } from '@nestjs/common';
+import { AppConfig } from 'generated/prisma/client';
+import { AppConfigKey } from './configs';
+import { ConfigDto } from './dto';
+
+@Injectable()
+export class AppConfigService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setModuleName(AppConfigService.name);
+  }
+
+  public async enabled(config: AppConfigKey): Promise<boolean> {
+    const row: Record<string, boolean>[] = await this.prisma.$queryRaw`
+        SELECT enabled FROM app_configs
+        WHERE config = ${config}
+    `;
+    return row[0].enabled;
+  }
+
+  async getAllConfigs(): Promise<AppConfig[]> {
+    return await this.prisma.appConfig.findMany();
+  }
+
+  async getConfig(config: string): Promise<AppConfig | null> {
+    return this.prisma.appConfig.findUnique({
+      where: { config },
+    });
+  }
+
+  async createConfig(createConfigDto: ConfigDto): Promise<AppConfig> {
+    createConfigDto.config = normalizeString(createConfigDto.config);
+    try {
+      const config: AppConfig = await this.prisma.appConfig.create({
+        data: {
+          ...createConfigDto,
+        },
+      });
+      this.logger.log(`Config created: ${JSON.stringify(config)}`);
+      return config;
+    } catch (e) {
+      this.logger.error(
+        `Failed to create config: ${JSON.stringify(createConfigDto)}`,
+        (e as Error)?.stack,
+      );
+      throw e;
+    }
+  }
+
+  async updateConfig(updateConfigDto: ConfigDto): Promise<AppConfig> {
+    updateConfigDto.config = normalizeString(updateConfigDto.config);
+    try {
+      const config = await this.prisma.appConfig.update({
+        where: { config: updateConfigDto.config },
+        data: {
+          ...updateConfigDto,
+        },
+      });
+      this.logger.log(`Config updated: ${JSON.stringify(config)}`);
+      return config;
+    } catch (e) {
+      this.logger.error(
+        `Failed to update config: ${JSON.stringify(updateConfigDto)}`,
+        (e as Error)?.stack,
+      );
+      throw e;
+    }
+  }
+
+  async deleteConfig(config: string): Promise<AppConfig | void> {
+    const normalizedConfig = normalizeString(config);
+    try {
+      const config = await this.prisma.appConfig.delete({
+        where: { config: normalizedConfig },
+      });
+      this.logger.log(`Config deleted: ${JSON.stringify(config)}`);
+      return config;
+    } catch (e) {
+      this.logger.error(
+        `Failed to delete config: ${normalizedConfig}`,
+        (e as Error)?.stack,
+      );
+      throw e;
+    }
+  }
+}

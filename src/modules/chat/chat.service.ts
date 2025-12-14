@@ -9,10 +9,12 @@ import { LoggerService } from '@/core/logger/logger.service';
 import { PrismaService } from '@/core/prisma/prisma.service';
 import { ChatCacheService } from '@/core/redis/cache/chat-cache.service';
 import { RedisService } from '@/core/redis/redis.service';
+import { AppConfigService } from '@/modules/app-config/app-config.service';
 import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -31,6 +33,7 @@ import {
 } from 'generated/prisma/client';
 import { BatchPayload } from 'generated/prisma/internal/prismaNamespace';
 import OpenAI from 'openai';
+import { AppConfigs } from '../app-config/configs';
 import {
   ChatConnectionDto,
   CreateChatDto,
@@ -56,6 +59,7 @@ export class ChatService {
     private readonly redisService: RedisService,
     private readonly chatCacheService: ChatCacheService,
     private readonly logger: LoggerService,
+    private readonly appConfig: AppConfigService,
   ) {
     this.logger.setModuleName(ChatService.name);
     this.aiClient = new OpenAI({
@@ -308,6 +312,9 @@ export class ChatService {
   async aiSearchMessage(
     searchMessageDto: SearchMessageDto,
   ): Promise<MessageWithCosineSimilarity[]> {
+    if (!(await this.appConfig.enabled(AppConfigs.SemanticSearchEnabled))) {
+      throw new ServiceUnavailableException();
+    }
     const { query, chatId } = searchMessageDto;
     try {
       const optimizedQueryRaw = await this.aiClient.chat.completions.create({
@@ -426,7 +433,14 @@ export class ChatService {
     const { authorId, chatId, text, uniqueFileName } = sendMessageDto;
 
     try {
-      const vector = text && (await vectorize(text));
+      const vector: () => Promise<string | undefined> = async () => {
+        if (
+          text &&
+          (await this.appConfig.enabled(AppConfigs.MessageEmbeddingEnabled))
+        ) {
+          return await vectorize(text);
+        }
+      };
       return await this.prisma.$transaction(async (tx) => {
         const message = await tx.message.create({
           data: {
