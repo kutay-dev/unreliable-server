@@ -4,6 +4,7 @@ import { envConfig } from '@/core/env/env.config';
 import { HealthModule } from '@/core/health/health.module';
 import { LoggerModule } from '@/core/logger/logger.module';
 import { RateLimitMiddleware } from '@/core/middleware/rate-limit.middleware';
+import { RequestIdMiddleware } from '@/core/middleware/request-id.middleware';
 import { PrismaModule } from '@/core/prisma/prisma.module';
 import { RedisModule } from '@/core/redis/redis.module';
 import { AppConfigModule } from '@/modules/app-config/app-config.module';
@@ -45,6 +46,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestIdMiddleware).forRoutes('*');
     consumer.apply(RateLimitMiddleware).forRoutes('*');
   }
 }

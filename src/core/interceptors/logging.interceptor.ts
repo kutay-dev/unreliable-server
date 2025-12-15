@@ -30,7 +30,7 @@ export class LoggingInterceptor implements NestInterceptor {
     const originalUrl = req.originalUrl as string;
     const start = Date.now();
 
-    const requestId = req.requestId as string | undefined;
+    const requestId = req.id as string;
     const userId = req.user?.id as string | undefined;
 
     if (shouldLogPath(originalUrl)) {
