@@ -1,14 +1,14 @@
-FROM node:22-slim
+FROM node:22
 
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN apt-get update && apt-get install -y curl
-
 RUN npm install
 
 COPY . .
+
+RUN npx prisma generate
 
 RUN npm run build
 

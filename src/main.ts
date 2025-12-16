@@ -54,7 +54,7 @@ async function bootstrap(): Promise<void> {
     );
   }
 
-  await app.listen(Number(configService.get<string>('PORT')));
+  await app.listen(Number(configService.get<string>('PORT')), '0.0.0.0');
 }
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 bootstrap();
