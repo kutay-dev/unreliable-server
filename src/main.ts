@@ -3,6 +3,7 @@ import { HttpExceptionFilter } from '@/common/filters';
 import { setupSwagger } from '@/common/swagger';
 import { LoggingInterceptor, ResponseInterceptor } from '@/core/interceptors';
 import { LoggerService } from '@/core/logger/logger.service';
+import { enableGracefulTermination } from '@/core/termination';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -54,6 +55,7 @@ async function bootstrap(): Promise<void> {
     );
   }
 
+  enableGracefulTermination(app);
   await app.listen(Number(configService.get<string>('PORT')), '0.0.0.0');
 }
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
