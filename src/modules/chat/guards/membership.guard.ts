@@ -75,6 +75,7 @@ export class MembershipGuard implements CanActivate {
       userId,
       chatId,
     );
+    if (!membership) return false;
     if (membership.type === ChatType.PUBLIC || membership.id) {
       return true;
     }
