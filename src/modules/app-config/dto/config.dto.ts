@@ -1,9 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class ConfigDto {
   @ApiProperty({ example: 'semantic_search_available' })
   @IsString()
+  @IsNotEmpty()
   config: string;
 
   @ApiProperty({ example: true })

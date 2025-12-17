@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
 export class DeleteUsersBulkDto {
   @ApiProperty({ example: 99 })
@@ -10,5 +10,6 @@ export class DeleteUsersBulkDto {
   @ApiPropertyOptional({ example: 'desc' })
   @IsOptional()
   @IsString()
+  @IsNotEmpty()
   order: 'asc' | 'desc';
 }

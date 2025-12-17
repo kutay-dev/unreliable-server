@@ -183,7 +183,12 @@ export class ChatService {
 
       const getMessagesQuery: Prisma.MessageFindManyArgs = {
         where: { chatId, deletedAt: null },
-        include: {
+        select: {
+          id: true,
+          authorId: true,
+          text: true,
+          imageUrl: true,
+          createdAt: true,
           author: {
             select: {
               username: true,

@@ -1,9 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class LogIntoChatDto {
   @ApiProperty({ example: '686fd61d-6090-487a-97cb-b9255e88682b' })
   @IsUUID()
+  @IsNotEmpty()
   chatId: string;
 
   @ApiPropertyOptional({ example: 'password123' })
