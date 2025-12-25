@@ -2,18 +2,29 @@ FROM node:24-alpine
 
 RUN apk add --no-cache openssl curl
 
+# Enable pnpm
+RUN corepack enable
+
 WORKDIR /app
 
-COPY package*.json ./
+# Copy only manifests first (for cache)
+COPY package.json pnpm-lock.yaml ./
 
-RUN npm install
+# Install deps
+RUN pnpm install --frozen-lockfile
 
+# Approve native builds (prisma, argon2, etc)
+RUN pnpm approve-builds
+
+# Copy source
 COPY . .
 
-RUN npx prisma generate
+# Prisma client
+RUN pnpm prisma generate
 
-RUN npm run build
+# Build
+RUN pnpm run build
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start:prod"]
+CMD ["pnpm", "run", "start:prod"]
