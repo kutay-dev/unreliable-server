@@ -1,6 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ElasticsearchModule } from '@nestjs/elasticsearch';
+import {
+  ElasticsearchModule,
+  ElasticsearchService,
+} from '@nestjs/elasticsearch';
+import { LoggerService } from '../logger/logger.service';
 
 @Module({
   imports: [
@@ -14,4 +18,23 @@ import { ElasticsearchModule } from '@nestjs/elasticsearch';
   ],
   exports: [ElasticsearchModule],
 })
-export class ElasticModule {}
+export class ElasticModule implements OnModuleInit {
+  constructor(
+    private readonly elasticsearchService: ElasticsearchService,
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setModuleName(ElasticModule.name);
+  }
+
+  async onModuleInit() {
+    try {
+      await this.elasticsearchService.ping();
+      this.logger.log('Elasticsearch successfully started');
+    } catch (error) {
+      this.logger.error(
+        'Elasticsearch failed to start',
+        (error as Error).stack,
+      );
+    }
+  }
+}
