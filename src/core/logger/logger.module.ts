@@ -1,11 +1,13 @@
 import { Global, Module } from '@nestjs/common';
 import { WinstonModule } from 'nest-winston';
 import { format, transports } from 'winston';
+import { ElasticModule } from '../elastic/elastic.module';
 import { LoggerService } from './logger.service';
 
 @Global()
 @Module({
   imports: [
+    ElasticModule,
     WinstonModule.forRoot({
       transports: [
         new transports.Console({

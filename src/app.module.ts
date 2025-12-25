@@ -1,5 +1,6 @@
 import { AwsModule } from '@/core/aws/aws.module';
 import { BullmqModule } from '@/core/bullmq/bullmq.module';
+import { ElasticModule } from '@/core/elastic/elastic.module';
 import { envConfig } from '@/core/env/env.config';
 import { HealthModule } from '@/core/health/health.module';
 import { LoggerModule } from '@/core/logger/logger.module';
@@ -21,6 +22,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       isGlobal: true,
       load: [envConfig],
     }),
+    ElasticModule,
     LoggerModule,
     PrismaModule,
     RedisModule,

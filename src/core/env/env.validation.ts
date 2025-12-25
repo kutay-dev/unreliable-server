@@ -41,4 +41,6 @@ export const envValidationSchema = Joi.object({
 
   RATE_LIMIT: Joi.number().required(),
   RATE_LIMIT_TTL: Joi.number().required(),
+
+  ELASTIC_SEARCH_NODE: Joi.string().required(),
 });
