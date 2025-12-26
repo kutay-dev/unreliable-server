@@ -3,6 +3,7 @@ import { HttpExceptionFilter } from '@/common/filters';
 import { setupSwagger } from '@/common/swagger';
 import { LoggingInterceptor, ResponseInterceptor } from '@/core/interceptors';
 import { LoggerService } from '@/core/logger/logger.service';
+import { MetricsService } from '@/core/metrics/metrics.service';
 import { enableGracefulTermination } from '@/core/termination';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -24,6 +25,7 @@ async function bootstrap(): Promise<void> {
 
   const configService = app.get(ConfigService);
   const logger = await app.resolve(LoggerService);
+  const metrics = app.get(MetricsService);
 
   app.enableCors();
   app.use(
@@ -32,6 +34,24 @@ async function bootstrap(): Promise<void> {
       crossOriginEmbedderPolicy: false,
     }),
   );
+
+  app.use((req, res, next) => {
+    if (
+      req.originalUrl.startsWith('/metrics') ||
+      req.originalUrl.startsWith('/health')
+    )
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return next();
+    res.on('finish', () => {
+      metrics.httpRequestsTotal.inc({
+        method: req.method,
+        route: req.route?.path ?? req.originalUrl,
+        status: res.statusCode,
+      });
+    });
+    next();
+  });
+
   app.getHttpAdapter().getInstance().set('trust proxy', true);
   app.useGlobalPipes(
     new ValidationPipe({

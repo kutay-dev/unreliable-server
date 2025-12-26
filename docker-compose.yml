@@ -67,7 +67,24 @@ services:
     ports:
       - '5601:5601'
 
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - '3001:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+
 volumes:
   postgres_data:
   redis_data:
   es-data:
+  prometheus_data:
+  grafana_data:

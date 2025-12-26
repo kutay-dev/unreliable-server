@@ -11,6 +11,7 @@ function shouldLogPath(path?: string): boolean {
   if (!path) return true;
   if (path.startsWith('/health')) return false;
   if (path.startsWith('/docs')) return false;
+  if (path.startsWith('/metrics')) return false;
   return true;
 }
 

@@ -4,6 +4,7 @@ import { ElasticModule } from '@/core/elastic/elastic.module';
 import { envConfig } from '@/core/env/env.config';
 import { HealthModule } from '@/core/health/health.module';
 import { LoggerModule } from '@/core/logger/logger.module';
+import { MetricsModule } from '@/core/metrics/metrics.module';
 import { RateLimitMiddleware } from '@/core/middleware/rate-limit.middleware';
 import { RequestIdMiddleware } from '@/core/middleware/request-id.middleware';
 import { PrismaModule } from '@/core/prisma/prisma.module';
@@ -23,6 +24,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       load: [envConfig],
     }),
     ElasticModule,
+    MetricsModule,
     LoggerModule,
     PrismaModule,
     RedisModule,
