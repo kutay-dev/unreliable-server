@@ -1,6 +1,7 @@
 import { normalizeString } from '@/common/utils/common.utils';
 import { LoggerService } from '@/core/logger/logger.service';
 import { PrismaService } from '@/core/prisma/prisma.service';
+import { RedisService } from '@/core/redis/redis.service';
 import { Injectable } from '@nestjs/common';
 import { AppConfig } from 'generated/prisma/client';
 import { AppConfigKey } from './configs';
@@ -11,16 +12,24 @@ export class AppConfigService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
+    private readonly redisService: RedisService,
   ) {
     this.logger.setModuleName(AppConfigService.name);
   }
 
   public async enabled(config: AppConfigKey): Promise<boolean> {
+    const cacheKey = `app-config:config:${config}`;
+    const cached = await this.redisService.get(cacheKey);
+    if (cached !== null) {
+      return cached === '1';
+    }
     const row: Record<string, boolean>[] = await this.prisma.$queryRaw`
         SELECT enabled FROM app_configs
         WHERE config = ${config}
     `;
-    return row[0].enabled;
+    const enabled = row[0].enabled;
+    await this.redisService.set(cacheKey, enabled ? '1' : '0', 3600);
+    return enabled;
   }
 
   async getAllConfigs(): Promise<AppConfig[]> {

@@ -438,14 +438,12 @@ export class ChatService {
     const { authorId, chatId, text, uniqueFileName } = sendMessageDto;
 
     try {
-      const vector: () => Promise<string | undefined> = async () => {
-        if (
-          text &&
-          (await this.appConfig.enabled(AppConfigs.MessageEmbeddingEnabled))
-        ) {
-          return await vectorize(text);
-        }
-      };
+      const vector: string | undefined =
+        text &&
+        (await this.appConfig.enabled(AppConfigs.MessageEmbeddingEnabled))
+          ? await vectorize(text)
+          : undefined;
+
       return await this.prisma.$transaction(async (tx) => {
         const message = await tx.message.create({
           data: {
@@ -464,6 +462,7 @@ export class ChatService {
         WHERE id = ${message.id}
       `;
         }
+        await this.chatCacheService.addMessage(chatId, noNulls(message));
         return message;
       });
     } catch (error) {
