@@ -1,4 +1,5 @@
 import { Environment } from '@/common/enums';
+import { isProd } from '@/common/utils/common.utils';
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
@@ -54,6 +55,7 @@ export class LoggerService {
     meta?: Record<string, unknown>,
     trace?: string,
   ) {
+    if (!isProd) return;
     try {
       void this.elasticsearchService.index({
         index: 'app-logs',

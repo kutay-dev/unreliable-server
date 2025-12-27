@@ -5,6 +5,7 @@ import {
   ElasticsearchService,
 } from '@nestjs/elasticsearch';
 import { LoggerService } from '../logger/logger.service';
+import { isProd } from '@/common/utils/common.utils';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ export class ElasticModule implements OnModuleInit {
   }
 
   async onModuleInit() {
+    if (!isProd) return;
     try {
       await this.elasticsearchService.ping();
       this.logger.log('Elasticsearch successfully started');

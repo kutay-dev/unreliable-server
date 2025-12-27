@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      target: prod
     depends_on:
       - pg
       - redis

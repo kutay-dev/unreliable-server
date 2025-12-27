@@ -1,3 +1,4 @@
+import { isProd } from '@/common/utils/common.utils';
 import { AwsModule } from '@/core/aws/aws.module';
 import { BullmqModule } from '@/core/bullmq/bullmq.module';
 import { ElasticModule } from '@/core/elastic/elastic.module';
@@ -23,7 +24,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       isGlobal: true,
       load: [envConfig],
     }),
-    ElasticModule,
+    ...(isProd ? [ElasticModule] : []),
     MetricsModule,
     LoggerModule,
     PrismaModule,
