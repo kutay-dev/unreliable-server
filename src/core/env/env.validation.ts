@@ -43,4 +43,6 @@ export const envValidationSchema = Joi.object({
   RATE_LIMIT_TTL: Joi.number().required(),
 
   ELASTIC_SEARCH_NODE: Joi.string().required(),
+
+  GF_DASHBOARDS_MIN_REFRESH_INTERVAL: Joi.string().required(),
 });

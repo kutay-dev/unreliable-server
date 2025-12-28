@@ -35,11 +35,14 @@ export class HealthController {
     return cpuLoad < cpuCores * 2 ? 'up' : 'down';
   }
 
+  private simpleHealthCheck(): HealthIndicatorFunction[] {
+    return [() => ({ app: { status: 'up' } })];
+  }
+
   @Get('liveness')
   @HealthCheck()
   async liveness(): Promise<HealthCheckResult> {
-    const cpuStatus = this.computeCpuStatus();
-    return this.health.check(this.internalChecks(cpuStatus));
+    return this.health.check(this.simpleHealthCheck());
   }
 
   @Get('readiness')

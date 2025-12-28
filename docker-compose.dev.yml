@@ -9,8 +9,8 @@ services:
       - .env
     environment:
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@pg:5432/${DB_NAME}
-      REDIS_URL: redis://redis:6379/0
       REDIS_HOST: redis
+      NODE_ENV: dev
     depends_on:
       - pg
       - redis
@@ -48,12 +48,21 @@ services:
     image: prom/prometheus
     ports:
       - '9090:9090'
+    volumes:
+      - ./prometheus.dev.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
 
   grafana:
     image: grafana/grafana
     ports:
       - '3001:3000'
+    environment:
+      GF_DASHBOARDS_MIN_REFRESH_INTERVAL: 1s
+    volumes:
+      - grafana_data:/var/lib/grafana
 
 volumes:
   postgres_data:
   redis_data:
+  prometheus_data:
+  grafana_data:

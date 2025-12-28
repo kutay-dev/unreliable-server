@@ -11,9 +11,8 @@ services:
       - .env
     environment:
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@pg:5432/${DB_NAME}
-      REDIS_URL: redis://redis:6379/0
       REDIS_HOST: redis
-      ELASTICSEARCH_NODE: http://elasticsearch:9200
+      NODE_ENV: prod
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/health/liveness']
