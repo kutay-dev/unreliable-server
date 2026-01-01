@@ -13,6 +13,7 @@ import { RedisModule } from '@/core/redis/redis.module';
 import { AppConfigModule } from '@/modules/app-config/app-config.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { ChatModule } from '@/modules/chat/chat.module';
+import { PaymentModule } from '@/modules/payment/payment.module';
 import { UserModule } from '@/modules/user/user.module';
 import { BullModule } from '@nestjs/bullmq';
 import { MiddlewareConsumer, Module } from '@nestjs/common';
@@ -47,6 +48,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     UserModule,
     ChatModule,
     AppConfigModule,
+    PaymentModule,
   ],
 })
 export class AppModule {

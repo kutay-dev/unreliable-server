@@ -6,6 +6,7 @@ export const envValidationSchema = Joi.object({
     .valid(Environment.DEV, Environment.STG, Environment.PROD)
     .default(Environment.DEV),
   PORT: Joi.number().default(3000),
+  CLIENT_URL: Joi.string().required(),
 
   JWT_SECRET: Joi.string().required(),
   JWT_EXPIRES_IN: Joi.string().default('30d'),
@@ -45,4 +46,9 @@ export const envValidationSchema = Joi.object({
   ELASTIC_SEARCH_NODE: Joi.string().required(),
 
   GF_DASHBOARDS_MIN_REFRESH_INTERVAL: Joi.string().required(),
+
+  POLAR_ACCESS_TOKEN_SANDBOX: Joi.string().required(),
+  POLAR_WEBHOOK_SECRET_SANDBOX: Joi.string().required(),
+  POLAR_ACCESS_TOKEN_PROD: Joi.string().required(),
+  POLAR_WEBHOOK_SECRET_PROD: Joi.string().required(),
 });

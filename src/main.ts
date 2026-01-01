@@ -9,13 +9,15 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import express, { json, urlencoded } from 'express';
+import express from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const server = express();
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
+    rawBody: true,
+    bodyParser: false,
     cors: {
       origin: '*',
       methods: ['*'],
@@ -53,6 +55,23 @@ async function bootstrap(): Promise<void> {
   });
 
   app.getHttpAdapter().getInstance().set('trust proxy', true);
+  app.use(
+    express.json({
+      limit: '5mb',
+      verify: (req: any, _, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
+  app.use(
+    express.urlencoded({
+      limit: '5mb',
+      extended: true,
+      verify: (req: any, _, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // removes any properties from the incoming payload that are not declared on the dto
@@ -74,9 +93,6 @@ async function bootstrap(): Promise<void> {
       app,
     );
   }
-
-  app.use(json({ limit: '5mb' }));
-  app.use(urlencoded({ limit: '5mb', extended: true }));
 
   enableGracefulTermination(app);
   const PORT = Number(configService.get<string>('PORT'));
