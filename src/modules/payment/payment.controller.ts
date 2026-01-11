@@ -23,13 +23,13 @@ export class PaymentController {
   createCheckout(
     @Body() createCheckoutDto: CreateCheckoutDto,
     @CurrentUser() user: User,
-  ) {
+  ): Promise<{ checkoutId: string; checkoutUrl: string }> {
     return this.paymentService.createCheckout(createCheckoutDto, user);
   }
 
   @Post('webhook')
-  @HttpCode(202)
-  async webhook(@Req() req: RawBodyRequest<Request>) {
+  @HttpCode(200)
+  async webhook(@Req() req: RawBodyRequest<Request>): Promise<void> {
     await this.paymentService.webhook(req);
   }
 }

@@ -30,3 +30,8 @@ export interface IEmitToRoomProps {
   socket: string;
   payload: any;
 }
+
+export type StaticProduct = Record<
+  string,
+  { id: string; name: string; content?: string; price: number }
+>;

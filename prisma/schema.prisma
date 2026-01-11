@@ -32,6 +32,12 @@ enum UserPlan {
   PRO
 }
 
+enum PaymentStatus {
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
 model User {
   id        String   @id @default(uuid()) @db.Uuid
   username  String   @unique @map("username") @db.VarChar(20)
@@ -39,12 +45,14 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   role      Role     @default(USER) @map("role")
   plan      UserPlan @default(STANDARD) @map("plan")
+  credits   Int      @default(10) @map("credits")
 
   messages   Message[]
   members    ChatMember[]
   AIMessage  AIMessage[]
   pollVotes  PollVote[]
   readStatus ReadStatus[]
+  payments   Payment[]
 
   @@index([username], map: "idx_users_username")
   @@map("users")
@@ -171,4 +179,31 @@ model AppConfig {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("app_configs")
+}
+
+model Payment {
+  id        String        @id @default(uuid()) @db.Uuid
+  eventId   String        @unique @map("event_id") @db.VarChar(64)
+  userId    String        @map("user_id") @db.Uuid
+  productId String        @map("product_id") @db.VarChar(64)
+  amount    Int           @map("amount") @db.Integer
+  currency  String        @default("USD") @map("currency") @db.Char(3)
+  status    PaymentStatus @map("status")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([productId])
+  @@index([userId])
+  @@map("payments")
+}
+
+model PaymentEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @unique @map("event_id") @db.VarChar(64)
+  type      String   @map("type") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([type])
+  @@map("payment_events")
 }
